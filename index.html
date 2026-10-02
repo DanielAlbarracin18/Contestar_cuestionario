@@ -1,132 +1,328 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self' data: gap: https://ssl.gstatic.com 'unsafe-inline' 'unsafe-eval';
-                 style-src 'self' 'unsafe-inline';
-                 media-src *;
-                 img-src 'self' data: content: https:;
-                 connect-src *;">
-  <title>Cuestionarios App</title>
-  <link rel="stylesheet" href="css/styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mis competencias</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef2f0;--ink:#15211f;--mute:#5d6b68;--line:#c9d4d0;--card:#fff;--accent:#0e5a56;--accent-ink:#fff;--warm:#e3a82b;--bad:#a63a2e}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:400 17px/1.5 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+main{max-width:640px;margin:0 auto;padding:28px 18px 60px}
+h1{font-size:2rem;line-height:1.1;font-weight:800;margin:0 0 6px;letter-spacing:-.02em}
+h2{font-size:1.15rem;margin:28px 0 10px;font-weight:600}
+p{margin:0 0 14px}
+.mute{color:var(--mute)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+button,.btn{font:inherit;font-weight:600;border:0;border-radius:10px;padding:13px 20px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+button.link{background:none;color:var(--mute);padding:6px 0;text-decoration:underline;font-weight:400}
+:focus-visible{outline:3px solid var(--warm);outline-offset:2px}
+input[type=text]{font:inherit;width:100%;padding:14px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+.card.run{border-color:var(--warm);border-width:2.5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px}
+.chip{background:#e4efec;border-radius:99px;padding:3px 12px;font-size:.9rem;font-weight:600}
+.run .chip{background:#fbefcf}
+.tag{display:inline-block;font-weight:600;color:#7a5600;margin-bottom:4px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.bar{height:6px;background:var(--line);border-radius:9px;overflow:hidden;margin:6px 0 22px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.ops{display:grid;gap:10px;margin:16px 0 22px}
+.op{display:flex;gap:12px;align-items:flex-start;padding:14px;border:1.5px solid var(--line);border-radius:10px;background:#fff;cursor:pointer}
+.op:has(input:checked){border-color:var(--accent);background:#e4efec}
+.op input{margin-top:5px;accent-color:var(--accent)}
+.q{font-size:1.3rem;line-height:1.3;font-weight:600;margin:6px 0 4px}
+.err{color:var(--bad);font-weight:600;margin-top:12px}
+.score{font-size:2rem;font-weight:800;line-height:1}
+button.op{width:100%;text-align:left;background:#fff;color:var(--ink);font-weight:400;border:1.5px solid var(--line);padding:16px 14px}
+button.op:active{border-color:var(--accent);background:#e4efec}
+.meta{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.timer{font-variant-numeric:tabular-nums;font-weight:800;font-size:1.7rem;color:var(--accent);min-width:5.2ch;text-align:right}
+</style>
 </head>
 <body>
+<main id="app"></main>
 
-  <div class="screen">
-    <header class="app-bar">
-      <div class="app-bar__title">Cuestionarios App</div>
-    </header>
+<script>
+/* ================= CONFIGURACIÓN ================= */
+const API_BASE = "https://TU-WORKER.workers.dev"; // URL de tu worker (index.js), sin "/" al final
+const VENTANA_MIN = 120; // minutos que una competencia queda abierta desde su hora_disponible
+/* ================================================== */
 
-    <main class="content">
+const DIAS = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+const DIA_TXT = {miercoles:"miércoles",sabado:"sábado"};
+const app = document.getElementById("app");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-      <!-- ── URL del servidor: fija, oculta al usuario ─────────────
-           La app trabaja exclusivamente con la API de Cuestionarios.
-           El input se mantiene en el DOM (oculto) para no romper
-           código existente que lea su valor (api.js, main-menu.js, etc). -->
-      <input id="server-url" type="hidden" value="https://api-cuestionarios.daniel-albarracin300.workers.dev">
-      <button id="btn-scan-qr" style="display:none"></button>
+let participante = null, intentos = [], comps = [], timer = null;
+let items = [], idx = 0, respuestas = [], t0 = 0, enviados = {}, activos = [];
 
-      <!-- ── Usuario seleccionado (ya no se escribe, se elige) ─────── -->
-      <div class="field">
-        <label for="user-name">Nombre de Usuario</label>
-        <div class="input-row">
-          <input id="user-name" class="input" type="text" readonly
-                 placeholder="Toca para seleccionar un usuario">
-          <button id="btn-select-user" type="button" class="input-icon-btn" title="Seleccionar usuario">&#128100;</button>
-        </div>
-      </div>
+async function api(path, opts) {
+  const r = await fetch(API_BASE + path, opts);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || d.message || ("Error " + r.status));
+  return d;
+}
 
-      <!-- ── Acciones principales ─────────────────────────────────── -->
-      <button id="btn-connect" class="btn btn--accent">&#128257;&nbsp; Conectar y Cargar Cuestionarios</button>
-      <button id="btn-local-questionnaires" class="btn btn--primary">&#128194;&nbsp; Contestar Cuestionario Local</button>
-      <button id="btn-manage-answers" class="btn btn--warning">&#128228;&nbsp; Gestionar Respuestas Locales</button>
-      <button id="btn-directory" class="btn btn--neutral">&#128203;&nbsp; Directorio</button>
+/* ---------- día y hora ---------- */
+const sinTildes = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const diasDe = c => (c.dias_disponibles || "").split(",").map(d => sinTildes(d.trim().toLowerCase())).filter(Boolean);
+function minutos(h) { const m = /^(\d{2}):(\d{2})$/.exec(h || ""); return m ? +m[1] * 60 + +m[2] : null; }
+function estado(c, now = new Date()) {
+  const dias = diasDe(c), ini = minutos(c.hora_disponible);
+  if (!dias.length || ini === null) return "sin_horario";
+  if (!dias.includes(DIAS[now.getDay()])) return "otro_dia";
+  const m = now.getHours() * 60 + now.getMinutes();
+  if (m < ini) return "luego";
+  return m < ini + VENTANA_MIN ? "abierta" : "cerrada";
+}
+const horario = c => {
+  const d = diasDe(c).map(x => DIA_TXT[x] || x).join(", ");
+  return d && c.hora_disponible ? `${d} · ${c.hora_disponible}` : "Sin horario asignado";
+};
+const ETIQ = {luego:"Hoy más tarde", cerrada:"Cerrada por hoy", otro_dia:"Otro día", sin_horario:"Sin horario"};
 
-      <!-- ── Estado ───────────────────────────────────────────────── -->
-      <div id="status-container" class="mt-4"></div>
+/* ---------- 1. ingreso con código ---------- */
+function vistaLogin(msg = "") {
+  clearInterval(timer);
+  app.innerHTML = `
+    <h1>Mis competencias</h1>
+    <p class="mute">Escribe tu código de participante para ver qué puedes responder ahora.</p>
+    <p><input type="text" id="codigo" placeholder="Tu código" autocomplete="off" autocapitalize="characters"></p>
+    <button id="entrar">Ingresar</button>
+    <p class="err" id="msg">${esc(msg)}</p>`;
+  const go = async () => {
+    const codigo = document.getElementById("codigo").value.trim();
+    if (!codigo) return;
+    const b = document.getElementById("entrar"); b.disabled = true; b.textContent = "Verificando…";
+    try {
+      const d = await api("/intentos?codigo=" + encodeURIComponent(codigo));
+      participante = d.participante; intentos = d.intentos || [];
+      await cargarCompetencias();
+      vistaInicio();
+    } catch (e) { vistaLogin(e.message); }
+  };
+  document.getElementById("entrar").onclick = go;
+  document.getElementById("codigo").onkeydown = e => { if (e.key === "Enter") go(); };
+}
 
-      <!-- ── Listas dinámicas ─────────────────────────────────────── -->
-      <div id="server-questionnaires-list"></div>
-      <div id="local-answers-list"></div>
+async function cargarCompetencias() {
+  comps = await api("/competencias?codigo=" + encodeURIComponent(participante.codigo));
+}
 
-    </main>
-  </div>
+/* ---------- 2. inicio: lo que coincide con día y hora ---------- */
+function vistaInicio() {
+  clearInterval(timer);
+  const mias = comps.filter(c => c.inscrito);
+  const abiertas = mias.filter(c => estado(c) === "abierta");
+  const grupos = {};
+  abiertas.forEach(c => (grupos[c.hora_disponible] ||= []).push(c));
 
-  <!-- ── Modal: seleccionar usuario ───────────────────────────────── -->
-  <div class="usersel-overlay" id="usersel-modal">
-    <div class="usersel-modal">
-      <div class="usersel-modal__header">
-        <h3>Seleccionar usuario</h3>
-        <button type="button" id="usersel-close" class="usersel-close" title="Cerrar">&times;</button>
-      </div>
-      <input type="text" id="usersel-search" class="input" placeholder="Buscar por nombre o código…">
-      <div class="usersel-list" id="usersel-list"></div>
-      <div class="usersel-empty" id="usersel-empty">
-        <p>Todavía no hay usuarios creados.</p>
-        <button type="button" id="usersel-goto-users" class="btn btn--neutral">&#128203;&nbsp; Ir a Usuarios</button>
-      </div>
-    </div>
-  </div>
+  let html = `<div class="top"><div><h1>Hola, ${esc(participante.nombre.split(" ")[0])}</h1>
+    <span class="mute">Código ${esc(participante.codigo)}</span></div><button class="link" id="salir">Salir</button></div>`;
 
-  <style>
-    .usersel-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:1rem;}
-    .usersel-overlay.open{display:flex;}
-    .usersel-modal{background:#fff;border-radius:14px;padding:1.25rem;width:100%;max-width:380px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.2);}
-    .usersel-modal__header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;}
-    .usersel-modal__header h3{font-size:1.05rem;font-weight:600;color:#1a1a2e;}
-    .usersel-close{border:none;background:transparent;font-size:1.4rem;line-height:1;cursor:pointer;color:#6b7280;}
-    #usersel-search{margin-bottom:.75rem;}
-    .usersel-list{overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;}
-    .usersel-item{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;padding:.6rem .8rem;border:1.5px solid #e5e7eb;border-radius:10px;background:#fff;cursor:pointer;font:inherit;}
-    .usersel-item:hover{background:#f3f4f6;}
-    .usersel-item--active{border-color:#4f46e5;background:#eef2ff;}
-    .usersel-item-name{font-weight:600;color:#1a1a2e;}
-    .usersel-item-code{font-size:.78rem;color:#6b7280;font-family:'Courier New',monospace;}
-    .usersel-empty{display:none;text-align:center;color:#9ca3af;padding:1.5rem .5rem .5rem;}
-    .usersel-empty p{margin-bottom:.75rem;font-size:.9rem;}
-  </style>
+  if (!mias.length) {
+    html += `<p>Aún no estás inscrito en ninguna competencia.</p>`;
+  } else if (!abiertas.length) {
+    html += `<div class="card"><strong>Ahora no tienes nada para responder.</strong>
+      <p class="mute" style="margin:6px 0 0">Cuando llegue el día y la hora de una de tus competencias, aparecerá aquí.</p></div>`;
+  } else {
+    html += Object.entries(grupos).map(([hora, lista]) => {
+      const ids = lista.map(c => c.id).join(",");
+      const chips = lista.map(c => `<span class="chip">${esc(c.titulo)}</span>`).join("");
+      return lista.length > 1
+        ? `<div class="card run"><span class="tag">Recorrido · ${esc(hora)}</span>
+            <p style="margin:0">Estas ${lista.length} competencias coinciden en día y hora. Respondes todas las preguntas seguidas y después se reparten a cada competencia.</p>
+            <div class="chips">${chips}</div><button data-run="${ids}">Iniciar recorrido</button></div>`
+        : `<div class="card"><span class="tag">Disponible ahora · ${esc(hora)}</span>
+            <div class="q" style="margin-top:0">${esc(lista[0].titulo)}</div>
+            <p class="mute">${esc(lista[0].organizacion || "")}</p><button data-run="${ids}">Responder</button></div>`;
+    }).join("");
+  }
 
-  <!-- ── URL de la API fija (Worker de Cloudflare) ───────────────────
-       Se fija ANTES de cargar cualquier módulo, cubriendo tanto
-       lectura por input#server-url como por localStorage/variable
-       global, según lo que use cada script. -->
-  <script>
-    (function () {
-      var API_URL = 'https://api-cuestionarios.daniel-albarracin300.workers.dev';
-      window.API_BASE_URL = API_URL;
-      window.SERVER_URL = API_URL;
-      try {
-        localStorage.setItem('server-url', API_URL);
-        localStorage.setItem('serverUrl', API_URL);
-      } catch (e) { /* almacenamiento no disponible */ }
-    })();
-  </script>
+  const otras = mias.filter(c => estado(c) !== "abierta");
+  if (otras.length) {
+    html += `<h2>Tus otras competencias</h2><div class="card">` + otras.map(c =>
+      `<div class="row"><div><strong>${esc(c.titulo)}</strong><br><span class="mute">${esc(horario(c))}</span></div>
+       <span class="mute">${ETIQ[estado(c)]}</span></div>`).join("") + `</div>`;
+  }
+  app.innerHTML = html;
+  document.getElementById("salir").onclick = () => { participante = null; vistaLogin(); };
+  app.querySelectorAll("[data-run]").forEach(b => b.onclick = () => iniciar(b.dataset.run.split(",").map(Number)));
+  timer = setInterval(vistaInicioSiCambia, 30000);
+}
+let firma = "";
+function vistaInicioSiCambia() {
+  const f = comps.filter(c => c.inscrito).map(c => c.id + estado(c)).join();
+  if (f !== firma) { firma = f; vistaInicio(); }
+}
 
-  <!-- ── Núcleo ─────────────────────────────────────────────────────── -->
-  <script src="js/core/utils.js"></script>
-  <script src="js/core/ui.js"></script>
-  <script src="js/core/storage.js"></script>
-  <script src="js/core/permissions.js"></script>
-  <script src="js/core/api.js"></script>
+/* ---------- 3. recorrido: junta las preguntas de todas las competencias ---------- */
+async function iniciar(ids) {
+  clearInterval(timer);
+  app.innerHTML = `<p class="mute">Preparando preguntas…</p>`;
+  try {
+    const hechos = new Set(intentos.filter(i => !i.es_simulacro).map(i => i.cuestionario_id));
+    items = []; respuestas = []; enviados = {}; idx = 0; activos = ids;
+    for (const id of ids) {
+      const det = await api(`/competencias/${id}?codigo=${encodeURIComponent(participante.codigo)}`);
+      const pend = det.temas.filter(t => !hechos.has(t.id));
+      const cuestionarios = await Promise.all(pend.map(t => api("/cuestionarios/" + t.id)));
+      cuestionarios.forEach((q, i) => q.preguntas.forEach(p =>
+        items.push({comp: id, tema: pend[i].id, temaNombre: pend[i].nombre, p})));
+    }
+    if (!items.length) {
+      app.innerHTML = `<h1>Todo respondido</h1><p class="mute">No tienes preguntas pendientes en estas competencias.</p><button id="v">Volver</button>`;
+      document.getElementById("v").onclick = vistaInicio; return;
+    }
+    window.onbeforeunload = e => { e.preventDefault(); e.returnValue = ""; };
+    vistaPregunta();
+  } catch (e) {
+    app.innerHTML = `<p class="err">${esc(e.message)}</p><button id="v">Volver</button>`;
+    document.getElementById("v").onclick = vistaInicio;
+  }
+}
 
-  <!-- ── Configuración ──────────────────────────────────────────────── -->
-  <script src="js/config/app-config.js"></script>
-  <script src="js/config/ad-config.js"></script>
+/* Fase 1: solo la pregunta (sin cronómetro). Fase 2: opciones + cronómetro.
+   El tiempo cuenta desde que las opciones están pintadas en pantalla hasta el toque de respuesta. */
+let raf = 0;
+const ahora = () => performance.now();
 
-  <!-- ── Módulos ─────────────────────────────────────────────────────── -->
-  <script src="js/modules/qr-scanner.js"></script>
-  <script src="js/modules/global-ad-ticker.js"></script>
-  <script src="js/modules/global-ad-manager.js"></script>
+function cabecera(extra = "") {
+  const {temaNombre} = items[idx];
+  return `<div class="meta"><span class="mute">Pregunta ${idx + 1} de ${items.length} · ${esc(temaNombre)}</span>${extra}</div>
+    <div class="bar"><i style="width:${(idx / items.length) * 100}%"></i></div>`;
+}
 
-  <!-- ── Pantalla ───────────────────────────────────────────────────── -->
-  <script src="js/screens/main-menu.js"></script>
+function vistaPregunta() {
+  cancelAnimationFrame(raf);
+  const {p} = items[idx];
+  app.innerHTML = `${cabecera()}
+    <div class="q">${esc(p.pregunta)}</div>
+    <p class="mute" style="margin:14px 0 22px">Lee con calma. El tiempo empieza cuando veas las opciones.</p>
+    <button id="ver">Ver opciones</button>`;
+  document.getElementById("ver").onclick = vistaOpciones;
+}
 
-  <!-- ── Selector de usuario (reemplaza el campo de texto libre) ─────── -->
-  <script src="js/modules/user-selector.js"></script>
+function esCorrectaLocal(p, valor) {
+  if (p.tipo === "texto") return String(valor).trim().toLowerCase() === String(p.respuesta_correcta ?? "").trim().toLowerCase();
+  const sel = Array.isArray(valor) ? valor : [valor];
+  const buenas = p.opciones.filter(o => o.es_correcta).map(o => o.texto);
+  return sel.length === buenas.length && buenas.every(b => sel.includes(b));
+}
 
-  <!-- cordova.js lo inyecta el build de Cordova; en navegador no existe y se ignora -->
-  <script src="cordova.js"></script>
+function vistaOpciones() {
+  const {p} = items[idx];
+  let campo;
+  if (p.tipo === "texto") {
+    campo = `<p style="margin:16px 0"><input type="text" id="rt" autocomplete="off" placeholder="Tu respuesta"></p><button id="ok">Responder</button>`;
+  } else if (p.tipo === "multiple") {
+    campo = `<div class="ops">${p.opciones.map((o, i) =>
+      `<label class="op"><input type="checkbox" name="o" value="${i}"><span>${esc(o.texto)}</span></label>`).join("")}</div>
+      <p class="mute" style="margin:-8px 0 14px">Marca todas las correctas.</p><button id="ok" disabled>Responder</button>`;
+  } else {
+    campo = `<div class="ops">${p.opciones.map((o, i) =>
+      `<button class="op" data-i="${i}">${esc(o.texto)}</button>`).join("")}</div>`;
+  }
+  app.innerHTML = `${cabecera('<span class="timer" id="tm">0.00</span>')}<div class="q">${esc(p.pregunta)}</div>${campo}`;
+
+  // Arranca el reloj cuando las opciones ya están dibujadas (después de dos frames).
+  let t0 = null, listo = false;
+  const tm = document.getElementById("tm");
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    t0 = ahora(); listo = true;
+    const tick = () => { tm.textContent = ((ahora() - t0) / 1000).toFixed(2); raf = requestAnimationFrame(tick); };
+    tick();
+    const f = app.querySelector("#rt"); if (f) f.focus();
+  }));
+
+  // El instante del toque se toma ANTES de cualquier otra cosa.
+  const responder = (valor, tFin) => {
+    if (!listo) return;
+    cancelAnimationFrame(raf);
+    const seg = (tFin - t0) / 1000;
+    const ok = esCorrectaLocal(p, valor);
+    respuestas.push({
+      comp: items[idx].comp, tema: items[idx].tema, pregunta_id: p.id,
+      respuesta_usuario: Array.isArray(valor) ? valor.join(", ") : valor,
+      tiempo_respuesta: ok ? Math.round(seg * 1000) / 1000 : 0   // solo cuenta si acertó
+    });
+    idx++;
+    idx < items.length ? vistaPregunta() : enviar();
+  };
+
+  if (p.tipo === "seleccion") {
+    app.querySelectorAll("button.op").forEach(b =>
+      b.addEventListener("pointerdown", e => { const t = ahora(); if (e.button > 0) return; b.dataset.t = t; }));
+    app.querySelectorAll("button.op").forEach(b =>
+      b.onclick = () => responder(p.opciones[+b.dataset.i].texto, +b.dataset.t || ahora()));
+  } else if (p.tipo === "multiple") {
+    const ok = document.getElementById("ok");
+    app.querySelectorAll("input[name=o]").forEach(x => x.onchange = () =>
+      ok.disabled = !app.querySelector("input[name=o]:checked"));
+    ok.addEventListener("pointerdown", () => ok.dataset.t = ahora());
+    ok.onclick = () => responder([...app.querySelectorAll("input[name=o]:checked")].map(x => p.opciones[+x.value].texto), +ok.dataset.t || ahora());
+  } else {
+    const inp = document.getElementById("rt"), ok = document.getElementById("ok");
+    const enviarTxt = () => { const t = ahora(); if (inp.value.trim()) responder(inp.value.trim(), t); };
+    ok.onclick = enviarTxt;
+    inp.onkeydown = e => { if (e.key === "Enter") enviarTxt(); };
+  }
+}
+
+/* ---------- 4. reparto: cada tema se envía a su competencia ---------- */
+async function enviar(msg = "") {
+  app.innerHTML = `<p class="mute">Repartiendo tus respuestas a cada competencia…</p>`;
+  const porTema = {};
+  respuestas.forEach(r => (porTema[r.tema] ||= []).push(r));
+  try {
+    for (const [tema, lista] of Object.entries(porTema)) {
+      if (enviados[tema]) continue;
+      const previos = intentos.filter(i => i.cuestionario_id == tema && !i.es_simulacro).length;
+      enviados[tema] = await api(`/cuestionarios/${tema}/intentos`, {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({codigo: participante.codigo, es_simulacro: false, intento_numero: previos + 1,
+          respuestas: lista.map(({pregunta_id, respuesta_usuario, tiempo_respuesta}) =>
+            ({pregunta_id, respuesta_usuario, tiempo_respuesta}))})
+      });
+      intentos.push({cuestionario_id: +tema, es_simulacro: 0, intento_numero: previos + 1});
+    }
+    window.onbeforeunload = null;
+    vistaResultado();
+  } catch (e) {
+    app.innerHTML = `<h1>No se pudo enviar todo</h1><p>${esc(e.message)}</p>
+      <p class="mute">Tus respuestas siguen aquí. No cierres la página y vuelve a intentar.</p><button id="re">Reintentar envío</button>`;
+    document.getElementById("re").onclick = () => enviar();
+  }
+}
+
+function vistaResultado() {
+  const bloques = activos.map(id => {
+    const c = comps.find(x => x.id === id);
+    const temas = [...new Set(items.filter(i => i.comp === id).map(i => i.tema))];
+    const filas = temas.map(t => {
+      const r = enviados[t], nombre = items.find(i => i.tema === t).temaNombre;
+      return `<div class="row"><span>${esc(nombre)}</span><strong>${c.ocultar_resultados ? "Registrado" : `${r.puntaje_total} / ${r.puntaje_maximo}`}</strong></div>`;
+    }).join("");
+    const tot = temas.reduce((a, t) => a + enviados[t].puntaje_total, 0);
+    const max = temas.reduce((a, t) => a + enviados[t].puntaje_maximo, 0);
+    return `<div class="card"><div class="q" style="margin:0 0 8px">${esc(c.titulo)}</div>
+      ${c.ocultar_resultados ? `<p class="mute">Los resultados se mostrarán cuando termine la competencia.</p>` : `<div class="score">${tot} / ${max}</div>`}
+      <div style="margin-top:10px">${filas}</div></div>`;
+  }).join("");
+  app.innerHTML = `<h1>Respuestas enviadas</h1>
+    <p class="mute">${activos.length > 1 ? "Tus respuestas se repartieron entre las competencias del recorrido." : "Tus respuestas quedaron registradas."}</p>
+    ${bloques}<button id="v">Volver al inicio</button>`;
+  document.getElementById("v").onclick = async () => { await cargarCompetencias().catch(() => {}); vistaInicio(); };
+}
+
+vistaLogin();
+</script>
 </body>
 </html>
