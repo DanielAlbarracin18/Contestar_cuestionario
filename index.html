@@ -43,6 +43,17 @@ input[type=text]{font:inherit;width:100%;padding:14px;border:1.5px solid var(--l
 button.op{width:100%;text-align:left;background:#fff;color:var(--ink);font-weight:400;border:1.5px solid var(--line);padding:16px 14px}
 button.op:active{border-color:var(--accent);background:#e4efec}
 .meta{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:12px 0}
+.stat{background:#eef5f3;border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-size:1.5rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat span{font-size:.8rem;color:var(--mute)}
+.stat.pos{background:#fbefcf}
+.ptitulo{font-weight:600;margin:14px 0 0}
+details.clas{margin-top:8px}
+details.clas summary{cursor:pointer;font-weight:600;color:var(--accent)}
+.clas .row{align-items:center;padding:8px 6px}
+.clas .yo{background:#fbefcf;border-radius:8px;font-weight:600}
+.clas .n{min-width:2.2ch;font-weight:800;color:var(--mute)}
 .timer{font-variant-numeric:tabular-nums;font-weight:800;font-size:1.7rem;color:var(--accent);min-width:5.2ch;text-align:right}
 </style>
 </head>
@@ -51,7 +62,7 @@ button.op:active{border-color:var(--accent);background:#e4efec}
 
 <script>
 /* ================= CONFIGURACIÓN ================= */
-const API_BASE = "https://TU-WORKER.workers.dev"; // URL de tu worker (index.js), sin "/" al final
+const API_BASE = "https://api-worker.daniel-albarracin300.workers.dev"; // URL de tu worker (index.js), sin "/" al final
 const VENTANA_MIN = 120; // minutos que una competencia queda abierta desde su hora_disponible
 /* ================================================== */
 
@@ -114,6 +125,59 @@ function vistaLogin(msg = "") {
 
 async function cargarCompetencias() {
   comps = await api("/competencias?codigo=" + encodeURIComponent(participante.codigo));
+  await cargarStats();
+}
+
+/* ---------- datos propios en cada torneo: posición, puntos, bonus, jornada ---------- */
+let stats = {};
+async function cargarStats() {
+  const q = "?codigo=" + encodeURIComponent(participante.codigo);
+  stats = {};
+  await Promise.all(comps.filter(c => c.inscrito).map(async c => {
+    const [det, cl] = await Promise.all([
+      api(`/competencias/${c.id}${q}`).catch(() => null),
+      api(`/competencias/${c.id}/clasificacion${q}`).catch(() => null)
+    ]);
+    stats[c.id] = {det, cl};
+  }));
+}
+const ord = n => n + ".º";
+const num = n => Number.isInteger(n) ? n : (Math.round(n * 10) / 10);
+
+function panel(c, conTitulo = false) {
+  const s = stats[c.id];
+  if (!s || (!s.det && !s.cl)) return "";
+  const {det, cl} = s;
+  const titulo = conTitulo ? `<div class="ptitulo">${esc(c.titulo)}</div>` : "";
+  const cajas = [];
+
+  // jornada (siempre visible)
+  if (det && c.total_jornadas > 0) {
+    const fin = det.jornada_motivo === "terminada";
+    cajas.push(`<div class="stat"><b>${fin ? "Terminada" : `${det.jornada_actual ?? "–"} / ${c.total_jornadas}`}</b><span>Jornada${fin ? "s" : ""}</span></div>`);
+  }
+
+  let tabla = "", aviso = "";
+  if (cl && cl.ocultos) {
+    aviso = `<p class="mute" style="margin:8px 0 0">La clasificación se mostrará cuando termine la competencia.</p>`;
+  } else if (cl) {
+    const filas = cl.clasificacion || [];
+    const yo = filas.find(f => f.yo);
+    if (yo) {
+      cajas.unshift(`<div class="stat pos"><b>${ord(yo.posicion)}</b><span>Posición de ${filas.length}</span></div>`);
+      cajas.push(`<div class="stat"><b>${num(yo.total)}</b><span>Puntos totales</span></div>`);
+      cajas.push(`<div class="stat"><b>${num(yo.puntaje)} / ${num(yo.maximo)}</b><span>Aciertos · ${num(yo.porcentaje)}%</span></div>`);
+      if (yo.bonus) cajas.push(`<div class="stat"><b>+${num(yo.bonus)}</b><span>Puntos bonus</span></div>`);
+    }
+    if (filas.length) {
+      tabla = `<details class="clas"><summary>Ver clasificación</summary>` + filas.map(f =>
+        `<div class="row${f.yo ? " yo" : ""}">
+          <span><span class="n">${f.posicion}</span> ${esc((f.usuario || "Participante") + (f.yo ? " (tú)" : ""))}</span>
+          <strong>${num(f.total)}</strong></div>`).join("") + `</details>`;
+    }
+  }
+  if (!cajas.length && !tabla && !aviso) return "";
+  return `${titulo}${cajas.length ? `<div class="stats">${cajas.join("")}</div>` : ""}${aviso}${tabla}`;
 }
 
 /* ---------- 2. inicio: lo que coincide con día y hora ---------- */
@@ -139,18 +203,18 @@ function vistaInicio() {
       return lista.length > 1
         ? `<div class="card run"><span class="tag">Recorrido · ${esc(hora)}</span>
             <p style="margin:0">Estas ${lista.length} competencias coinciden en día y hora. Respondes todas las preguntas seguidas y después se reparten a cada competencia.</p>
-            <div class="chips">${chips}</div><button data-run="${ids}">Iniciar recorrido</button></div>`
+            <div class="chips">${chips}</div>${lista.map(c => panel(c, true)).join("")}<div style="height:12px"></div><button data-run="${ids}">Iniciar recorrido</button></div>`
         : `<div class="card"><span class="tag">Disponible ahora · ${esc(hora)}</span>
             <div class="q" style="margin-top:0">${esc(lista[0].titulo)}</div>
-            <p class="mute">${esc(lista[0].organizacion || "")}</p><button data-run="${ids}">Responder</button></div>`;
+            <p class="mute">${esc(lista[0].organizacion || "")}</p>${panel(lista[0])}<div style="height:12px"></div><button data-run="${ids}">Responder</button></div>`;
     }).join("");
   }
 
   const otras = mias.filter(c => estado(c) !== "abierta");
   if (otras.length) {
-    html += `<h2>Tus otras competencias</h2><div class="card">` + otras.map(c =>
-      `<div class="row"><div><strong>${esc(c.titulo)}</strong><br><span class="mute">${esc(horario(c))}</span></div>
-       <span class="mute">${ETIQ[estado(c)]}</span></div>`).join("") + `</div>`;
+    html += `<h2>Tus otras competencias</h2>` + otras.map(c =>
+      `<div class="card"><div class="row" style="border:0;padding-top:0"><div><strong>${esc(c.titulo)}</strong><br><span class="mute">${esc(horario(c))}</span></div>
+       <span class="mute">${ETIQ[estado(c)]}</span></div>${panel(c)}</div>`).join("");
   }
   app.innerHTML = html;
   document.getElementById("salir").onclick = () => { participante = null; vistaLogin(); };
@@ -294,6 +358,7 @@ async function enviar(msg = "") {
       intentos.push({cuestionario_id: +tema, es_simulacro: 0, intento_numero: previos + 1});
     }
     window.onbeforeunload = null;
+    await cargarStats().catch(() => {});
     vistaResultado();
   } catch (e) {
     app.innerHTML = `<h1>No se pudo enviar todo</h1><p>${esc(e.message)}</p>
@@ -314,7 +379,7 @@ function vistaResultado() {
     const max = temas.reduce((a, t) => a + enviados[t].puntaje_maximo, 0);
     return `<div class="card"><div class="q" style="margin:0 0 8px">${esc(c.titulo)}</div>
       ${c.ocultar_resultados ? `<p class="mute">Los resultados se mostrarán cuando termine la competencia.</p>` : `<div class="score">${tot} / ${max}</div>`}
-      <div style="margin-top:10px">${filas}</div></div>`;
+      <div style="margin-top:10px">${filas}</div>${panel(c)}</div>`;
   }).join("");
   app.innerHTML = `<h1>Respuestas enviadas</h1>
     <p class="mute">${activos.length > 1 ? "Tus respuestas se repartieron entre las competencias del recorrido." : "Tus respuestas quedaron registradas."}</p>
