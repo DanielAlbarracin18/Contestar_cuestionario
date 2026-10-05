@@ -64,6 +64,8 @@ details.clas summary{cursor:pointer;font-weight:600;color:var(--accent)}
 /* ================= CONFIGURACIÓN ================= */
 const API_BASE = "https://api-worker.daniel-albarracin300.workers.dev"; // URL de tu worker (index.js), sin "/" al final
 const VENTANA_MIN = 120; // minutos que una competencia queda abierta desde su hora_disponible
+const CODIGO_TORNEOS = "2026actoymas"; // código especial: abre la visualización de torneos (se sincroniza con el servidor)
+const PAGINA_TORNEOS = "Visualizaciondetorneos.html";
 /* ================================================== */
 
 const DIAS = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
@@ -111,6 +113,7 @@ function vistaLogin(msg = "") {
   const go = async () => {
     const codigo = document.getElementById("codigo").value.trim();
     if (!codigo) return;
+    if (codigo.toLowerCase() === CODIGO_TORNEOS.toLowerCase()) { location.href = PAGINA_TORNEOS; return; }
     const b = document.getElementById("entrar"); b.disabled = true; b.textContent = "Verificando…";
     try {
       const d = await api("/intentos?codigo=" + encodeURIComponent(codigo));
