@@ -1245,8 +1245,7 @@ async function generateCertificatesPDF(t) {
   const { achievements, medals, medalOrder } = computeCertificateData(t);
   const dateStr = new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  const realNames = t.realNames || {};
-  const displayName = p => (realNames[p] && String(realNames[p]).trim()) || p;
+  const displayName = p => p;
 
   const coverImg = drawMedalleroPage(t, medalOrder, medals, displayName);
   const orderedNames = [...t.participants].sort((a, b) => displayName(a).localeCompare(displayName(b), 'es', { sensitivity: 'base' }));
@@ -1268,7 +1267,6 @@ async function generateCertificatesPDF(t) {
 
 // ── edición de contenido shared (por jornada) en un torneo YA CREADO ──
 let editSharedData = null;   // copia editable de questionsByRound mientras se edita
-let editRealNames = null;    // copia editable de t.realNames (seudónimo → nombre real) mientras se edita
 let editSharedRound = null;  // jornada (1-based) seleccionada en la vista de edición
 
 // ── edición de la asignación de TEMAS por jornada (modo 'temas') en un torneo YA CREADO ──
@@ -1282,7 +1280,6 @@ let bonusScores = {};         // { [nombre]: número } — acumula durante la se
 
 // ── ordenamiento de tabla de clasificación ──
 let sortBy = 'total';         // 'total' | 'pts' | 'score' | 'wins' | 'draws' | 'bonus'
-let teamSortBy = 'total';     // clasificación por clubes / iglesias: 'total' (suma) | 'avg' (promedio por miembro)
 
 // ── ocultar resultados (suspenso): tabla de posiciones y marcadores en vivo ──
 let draftHideResults = false;  // valor elegido al crear el torneo
@@ -1332,7 +1329,6 @@ function render() {
   else if (view === 'shared-edit') renderSharedEdit();
   else if (view === 'round-temas-edit') renderRoundTemasEdit();
   else if (view === 'add-participants') renderAddParticipants();
-  else if (view === 'real-names-edit') renderRealNamesEdit();
   else if (view === 'progress') renderProgress();
 }
 
@@ -1784,9 +1780,10 @@ function computeFullStats(t) {
 }
 
 // ── clasificación por equipos (clubes e iglesias) ──
-// Cada participante suma su total (Pts + Extra) a su club y a su iglesia, tomados de
-// t.apiTeams (se trae al sincronizar con el worker). Sin club / sin iglesia = no suma a ninguno.
-function buildTeamStandings(t, stat, bonus, total) {
+// Cada participante aporta sus puntos (Pts + Extra) a su club y a su iglesia, tomados de
+// t.apiTeams (se trae al sincronizar con el worker). Sin club / sin iglesia = no cuenta en ninguno.
+// La clasificación es por PROMEDIO por miembro (total del grupo ÷ cantidad de miembros).
+function buildTeamStandings(t, stat, bonus, total, ratioPct, ratioEligible) {
   const teams = t.apiTeams || {};
   const groups = { club: new Map(), iglesia: new Map() };
   t.participants.forEach(p => {
@@ -1795,47 +1792,51 @@ function buildTeamStandings(t, stat, bonus, total) {
     ['club', 'iglesia'].forEach(tipo => {
       const nombre = info[tipo];
       if (!nombre) return;
-      const g = groups[tipo].get(nombre) || { nombre, miembros: 0, pts: 0, bonus: 0, total: 0, live: false };
+      const g = groups[tipo].get(nombre) || { nombre, miembros: 0, pts: 0, bonus: 0, total: 0, score: 0, ratioSum: 0, ratioN: 0, live: false };
       g.miembros++;
       g.pts += stat[p].pts;
       g.bonus += bonus[p] || 0;
       g.total += total(p);
+      g.score += stat[p].score;
+      // Ratio: solo cuentan los miembros elegibles (>40% de jornadas) con % de acierto registrado
+      const rp = ratioEligible(p) ? ratioPct(p) : null;
+      if (rp !== null) { g.ratioSum += rp; g.ratioN++; }
       g.live = g.live || !!stat[p].live;
       groups[tipo].set(nombre, g);
     });
   });
-  const avg = g => g.total / g.miembros;
-  const cmp = (a, b) => teamSortBy === 'avg'
-    ? (avg(b) - avg(a)) || (b.total - a.total) || a.nombre.localeCompare(b.nombre, 'es')
-    : (b.total - a.total) || (avg(b) - avg(a)) || a.nombre.localeCompare(b.nombre, 'es');
+  const fill = g => {
+    g.avg = g.total / g.miembros;                       // Pts promedio (Pts + Extra) por miembro
+    g.avgScore = g.score / g.miembros;                  // Puntaje promedio por miembro
+    g.avgRatio = g.ratioN > 0 ? g.ratioSum / g.ratioN : null; // Ratio promedio (de miembros elegibles)
+  };
+  groups.club.forEach(fill);
+  groups.iglesia.forEach(fill);
+  const cmp = (a, b) => (b.avg - a.avg) || (b.miembros - a.miembros) || a.nombre.localeCompare(b.nombre, 'es');
   return { club: [...groups.club.values()].sort(cmp), iglesia: [...groups.iglesia.values()].sort(cmp) };
 }
 
 function teamTableHtml(titulo, etiqueta, rows) {
   if (!rows.length) return '';
-  const hasExtra = rows.some(g => g.bonus > 0);
-  const col = key => key === teamSortBy ? 'sort-active' : '';
-  const arr = key => key === teamSortBy ? ' <span class="sort-arrow">▼</span>' : '';
-  const fmt = n => (Math.round(n * 10) / 10).toString();
+  const fmt = n => (Math.round(n * 100) / 100).toString();
   return `
     <h2 class="section-title">${titulo}</h2>
     <div style="background:var(--bg-panel);border:1px solid var(--accent-gold-dim);border-radius:var(--radius);overflow:auto">
       <table class="standings-table">
         <thead><tr>
-          <th>#</th><th style="text-align:left">${etiqueta}</th><th>Miembros</th><th>Pts</th>
-          ${hasExtra ? '<th>Extra</th>' : ''}
-          <th class="${col('total')}" data-action="team-sort" data-key="total">Total${arr('total')}</th>
-          <th class="${col('avg')}" data-action="team-sort" data-key="avg" title="Total ÷ miembros inscritos">Promedio${arr('avg')}</th>
+          <th>#</th><th style="text-align:left">${etiqueta}</th><th>Miembros</th>
+          <th class="sort-active" title="Pts totales (incluye Extra) ÷ miembros inscritos">Pts prom.</th>
+          <th title="Puntaje total ÷ miembros inscritos">Puntaje prom.</th>
+          <th title="Promedio del Ratio de los miembros elegibles (más del 40% de las jornadas completadas)">Ratio prom.</th>
         </tr></thead>
         <tbody>${rows.map((g, i) => `
           <tr class="${g.live ? 'live-row' : ''}">
             <td class="rank">${i + 1}</td>
             <td>${esc(g.nombre)}${g.live ? ' <span class="live-dot" title="Incluye un enfrentamiento en curso, resultado provisional">🔴</span>' : ''}</td>
             <td style="color:var(--text-muted)">${g.miembros}</td>
-            <td class="pts">${g.pts}</td>
-            ${hasExtra ? `<td style="color:var(--accent-gold);font-family:'Oswald',sans-serif;font-weight:600">+${g.bonus}</td>` : ''}
-            <td class="pts${teamSortBy === 'total' ? ' sort-col' : ''}">${g.total}</td>
-            <td${teamSortBy === 'avg' ? ' class="sort-col"' : ''} style="color:var(--text-muted)">${fmt(g.total / g.miembros)}</td>
+            <td class="pts sort-col">${fmt(g.avg)}</td>
+            <td style="color:var(--text-muted)">${fmt(g.avgScore)}</td>
+            <td style="color:var(--text-muted)">${g.avgRatio !== null ? (g.avgRatio * 100).toFixed(1) + '%' : '—'}</td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -1959,7 +1960,7 @@ function renderDetail() {
   // ── Clasificación por clubes e iglesias (misma regla de oculto que la individual) ──
   let teamsBlock = '';
   if (!standingsHidden) {
-    const teamStandings = buildTeamStandings(t, stat, bonus, total);
+    const teamStandings = buildTeamStandings(t, stat, bonus, total, ratioPct, ratioEligible);
     teamsBlock = teamTableHtml('Clasificación por clubes', 'Club', teamStandings.club)
                + teamTableHtml('Clasificación por iglesias', 'Iglesia', teamStandings.iglesia);
     if (!teamsBlock && t.competenciaId && !t.apiTeams) {
@@ -2004,7 +2005,6 @@ function renderDetail() {
         ${teamsBlock}
         ${!standingsHidden ? `<button class="btn-secondary" data-action="generate-ranking-image" style="align-self:flex-start;margin-top:10px">🏆 Generar imagen del Top 5</button>` : ''}
         ${!standingsHidden ? `<button class="btn-secondary" data-action="progress-open" style="align-self:flex-start;margin-top:8px">📈 Ver progreso por jornada</button>` : ''}
-        <button class="btn-secondary" data-action="real-names-edit-open" style="align-self:flex-start;margin-top:8px">🪪 Nombres reales (certificados)</button>
         ${!standingsHidden ? `<button class="btn-secondary" data-action="generate-certificates-pdf" style="align-self:flex-start;margin-top:8px">📜 Generar certificados (PDF)</button>` : ''}
       </section>
 
@@ -2661,36 +2661,6 @@ function renderAddContentEditor(name) {
     </div>`;
 }
 
-function renderRealNamesEdit() {
-  const t = getTournament(activeTid);
-  if (!t) { view = 'detail'; render(); return; }
-
-  const rows = t.participants.map(p => {
-    const val = editRealNames && editRealNames[p] != null ? editRealNames[p] : '';
-    return `
-      <div class="row-input" style="align-items:center">
-        <span style="flex:1;color:var(--text-muted);font-size:.9rem">${esc(p)}</span>
-        <input type="text" data-action="real-name-field" data-pseudo="${esc(p)}" value="${esc(val)}" placeholder="Nombre real (opcional)" style="flex:1.4">
-      </div>`;
-  }).join('');
-
-  document.getElementById('app').innerHTML = `
-    <div class="page">
-      <button class="back-link" data-action="real-names-cancel">← ${esc(t.name)}</button>
-
-      <header class="page-header">
-        <span class="eyebrow">${esc(t.name)}</span>
-        <h1>Nombres reales</h1>
-      </header>
-
-      <p class="hint">Si alguien se anotó con un seudónimo, escribí acá su nombre real. Se usará en los certificados y el medallero del PDF en lugar del seudónimo. Si dejás un campo vacío, se usa el seudónimo tal cual.</p>
-
-      <div class="form-block">${rows}</div>
-
-      <button class="btn-primary" data-action="real-names-save">Guardar</button>
-    </div>`;
-}
-
 function renderBonus() {
   const t = getTournament(activeTid);
   if (!t) { view='home'; render(); return; }
@@ -2853,29 +2823,6 @@ document.getElementById('app').addEventListener('click', e => {
   } else if (action === 'close-ranking-image') {
     rankingImageDataUrl = null;
     render();
-
-  } else if (action === 'real-names-edit-open') {
-    const t = getTournament(activeTid);
-    if (!t) return;
-    editRealNames = { ...(t.realNames || {}) };
-    view = 'real-names-edit'; render();
-
-  } else if (action === 'real-names-save') {
-    const t = getTournament(activeTid);
-    if (!t || !editRealNames) return;
-    const cleaned = {};
-    Object.entries(editRealNames).forEach(([pseudo, real]) => {
-      const v = String(real || '').trim();
-      if (v) cleaned[pseudo] = v;
-    });
-    t.realNames = cleaned;
-    saveTournament(t);
-    editRealNames = null;
-    view = 'detail'; render();
-
-  } else if (action === 'real-names-cancel') {
-    editRealNames = null;
-    view = 'detail'; render();
 
   } else if (action === 'generate-certificates-pdf') {
     const t = getTournament(activeTid);
@@ -3281,9 +3228,6 @@ document.getElementById('app').addEventListener('click', e => {
   } else if (action === 'sort-by') {
     sortBy = el.dataset.key; render();
 
-  } else if (action === 'team-sort') {
-    teamSortBy = el.dataset.key === 'avg' ? 'avg' : 'total'; render();
-
   } else if (action === 'open-bonus') {
     const t = getTournament(activeTid);
     if (!t) return;
@@ -3535,12 +3479,6 @@ document.getElementById('app').addEventListener('input', e => {
     const roundObj = editSharedData?.find(r => r.round === round);
     if (roundObj && roundObj.questions[qi]) {
       roundObj.questions[qi].text = e.target.value;
-    }
-  }
-  if (e.target?.dataset?.action === 'real-name-field') {
-    const pseudo = e.target.dataset.pseudo;
-    if (editRealNames && pseudo != null) {
-      editRealNames[pseudo] = e.target.value;
     }
   }
 });
