@@ -1,0 +1,3652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Organizador de Torneos</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --bg-deep: #13201A;
+  --bg-panel: #1D2D24;
+  --bg-panel-hover: #23362A;
+  --accent-gold: #D8A84E;
+  --accent-gold-dim: rgba(216,168,78,0.22);
+  --accent-red: #C75450;
+  --accent-green: #4EA87A;
+  --text-cream: #F1ECE0;
+  --text-muted: #8FA293;
+  --radius: 10px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg-deep);
+  color: var(--text-cream);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  padding: 32px 18px 80px;
+}
+#app { max-width: 680px; margin: 0 auto; }
+.page { display: flex; flex-direction: column; gap: 24px; }
+
+/* ── typography ── */
+.eyebrow {
+  display: block;
+  font-family: 'Oswald', sans-serif;
+  font-size: .72rem; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--accent-gold);
+  margin-bottom: 6px;
+}
+.page-header h1 {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700; font-size: 2rem;
+  margin: 0; color: var(--text-cream);
+}
+.section-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: .9rem; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-muted);
+  margin: 0 0 12px;
+}
+
+/* ── back link ── */
+.back-link {
+  align-self: flex-start; background: none; border: none;
+  color: var(--text-muted); font-family: 'Inter', sans-serif;
+  font-size: .88rem; cursor: pointer; padding: 4px 0;
+}
+.back-link:hover { color: var(--accent-gold); }
+
+/* ── CTA ── */
+.cta-add {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 18px;
+  background: var(--bg-panel);
+  border: 1.5px dashed var(--accent-gold-dim); border-radius: 12px;
+  color: var(--accent-gold);
+  font-family: 'Oswald', sans-serif; font-size: 1.05rem;
+  letter-spacing: .03em; text-transform: uppercase;
+  cursor: pointer; transition: background .15s, border-color .15s;
+}
+.cta-add:hover { background: var(--bg-panel-hover); border-color: var(--accent-gold); }
+.cta-add .plus { font-size: 1.4rem; line-height: 1; }
+
+/* ── tournament cards ── */
+.t-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.t-card { position: relative; background: var(--bg-panel); border: 1px solid var(--accent-gold-dim); border-radius: var(--radius); overflow: hidden; }
+.t-card-body { padding: 18px 66px 16px 18px; cursor: pointer; transition: background .15s; }
+.t-card-body:hover { background: var(--bg-panel-hover); }
+.t-card h3 { margin: 0 0 6px; font-family: 'Oswald', sans-serif; font-size: 1.15rem; font-weight: 600; }
+.t-card p { margin: 0; font-size: .85rem; color: var(--text-muted); }
+.t-card-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 2px; }
+.t-card-icon-btn {
+  width: 26px; height: 26px; border-radius: 50%; border: none;
+  background: transparent; color: var(--text-muted); font-size: 1rem;
+  line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.t-card-icon-btn:hover { background: var(--accent-gold-dim); color: var(--accent-gold); }
+.t-card-delete { font-size: 1.1rem; }
+.t-card-delete:hover { background: rgba(199,84,80,.18); color: var(--accent-red); }
+.empty-state { color: var(--text-muted); font-size: .92rem; }
+
+/* ── home: acciones (nuevo / importar) ── */
+.home-actions { display: flex; gap: 10px; }
+.home-actions .cta-add { flex: 1; }
+.btn-import {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 0 18px; background: var(--bg-panel);
+  border: 1.5px dashed var(--accent-gold-dim); border-radius: 12px;
+  color: var(--accent-gold); font-family: 'Oswald', sans-serif; font-size: .85rem;
+  letter-spacing: .03em; text-transform: uppercase; cursor: pointer;
+  white-space: nowrap; transition: background .15s, border-color .15s;
+}
+.btn-import:hover { background: var(--bg-panel-hover); border-color: var(--accent-gold); }
+
+/* ── imagen épica de top 5 ── */
+.ranking-image-overlay {
+  position: fixed; inset: 0; background: rgba(10,15,12,.86);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 999; padding: 24px;
+}
+.ranking-image-box { display: flex; flex-direction: column; align-items: center; gap: 16px; max-width: 92vw; }
+.ranking-image-box img {
+  max-width: 100%; max-height: 74vh; border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.55);
+}
+.ranking-image-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+/* ── form ── */
+.form-block { display: flex; flex-direction: column; gap: 10px; }
+.form-block label {
+  font-family: 'Oswald', sans-serif; font-size: .8rem;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted);
+}
+.form-block input[type=text], .form-block textarea {
+  background: var(--bg-panel); border: 1px solid var(--accent-gold-dim);
+  border-radius: 8px; padding: 12px 14px;
+  color: var(--text-cream); font-family: 'Inter', sans-serif; font-size: .95rem;
+  outline: none; width: 100%;
+}
+.form-block input[type=text]:focus, .form-block textarea:focus { border-color: var(--accent-gold); }
+.form-block textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+
+.row-input { display: flex; gap: 8px; }
+.row-input input { flex: 1; }
+
+/* ── chips ── */
+.chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--bg-panel); border: 1px solid var(--accent-gold-dim);
+  border-radius: 999px; padding: 5px 8px 5px 14px; font-size: .86rem;
+}
+.chip.question-chip { border-color: rgba(78,168,122,.35); }
+.chip button { background: none; border: none; color: var(--text-muted); font-size: 1rem; cursor: pointer; line-height: 1; padding: 2px 4px; }
+.chip button:hover { color: var(--accent-red); }
+.hint { margin: 0; font-size: .8rem; color: var(--text-muted); }
+
+/* ── ocultar resultados toggle ── */
+.hide-results-toggle {
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  background: var(--bg-panel); border: 1px solid var(--accent-gold-dim);
+  border-radius: 8px; padding: 12px 14px; font-size: .92rem;
+}
+.hide-results-toggle:hover { border-color: var(--accent-gold); }
+.hide-results-toggle input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent-gold); }
+.hidden-results-panel {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  background: var(--bg-panel); border: 1px dashed var(--accent-gold-dim);
+  border-radius: var(--radius); padding: 32px 18px; text-align: center;
+}
+.hidden-results-panel .lock-icon { font-size: 2rem; }
+.hidden-results-panel .lock-text { color: var(--text-muted); font-size: .9rem; }
+
+/* ── tabs ── */
+.tabs { display: flex; border: 1px solid var(--accent-gold-dim); border-radius: 8px; overflow: hidden; }
+.tab {
+  flex: 1; padding: 8px 12px; background: var(--bg-panel); border: none;
+  color: var(--text-muted); font-family: 'Oswald', sans-serif;
+  font-size: .78rem; letter-spacing: .06em; text-transform: uppercase;
+  cursor: pointer; transition: background .15s, color .15s;
+}
+.tab:not(:last-child) { border-right: 1px solid var(--accent-gold-dim); }
+.tab.active { background: var(--accent-gold-dim); color: var(--accent-gold); }
+.tab:hover:not(.active) { background: var(--bg-panel-hover); }
+
+.import-area { display: none; flex-direction: column; gap: 8px; }
+.import-area.visible { display: flex; }
+.import-feedback { font-size: .8rem; padding: 6px 10px; border-radius: 6px; display: none; }
+.import-feedback.ok { display: block; background: rgba(216,168,78,.12); color: var(--accent-gold); }
+.import-feedback.err { display: block; background: rgba(199,84,80,.14); color: var(--accent-red); }
+
+/* ── buttons ── */
+.btn-primary {
+  width: 100%; padding: 16px; border: none; border-radius: var(--radius);
+  background: var(--accent-gold); color: #1A1409;
+  font-family: 'Oswald', sans-serif; font-size: 1rem;
+  letter-spacing: .03em; text-transform: uppercase; cursor: pointer;
+  transition: filter .15s;
+}
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:disabled { background: var(--bg-panel-hover); color: var(--text-muted); cursor: not-allowed; filter: none; }
+.btn-secondary {
+  background: var(--bg-panel-hover); border: 1px solid var(--accent-gold-dim);
+  color: var(--accent-gold); border-radius: 8px; padding: 0 18px;
+  font-family: 'Oswald', sans-serif; font-size: .85rem;
+  letter-spacing: .03em; text-transform: uppercase;
+  cursor: pointer; white-space: nowrap; height: 46px;
+}
+.btn-secondary:hover { border-color: var(--accent-gold); }
+
+/* ── detail: jornadas ── */
+.jornada-list { display: flex; flex-direction: column; gap: 12px; }
+.jornada-card {
+  position: relative; display: flex; align-items: center; gap: 18px;
+  background: var(--bg-panel); border: 1px solid var(--accent-gold-dim);
+  border-radius: var(--radius); padding: 16px 22px; cursor: pointer;
+  transition: background .15s, border-color .15s; overflow: hidden;
+}
+.jornada-card:hover { background: var(--bg-panel-hover); border-color: var(--accent-gold); }
+.jornada-card::before, .jornada-card::after {
+  content: ""; position: absolute; width: 16px; height: 16px;
+  background: var(--bg-deep); border-radius: 50%;
+  top: 50%; transform: translateY(-50%);
+}
+.jornada-card::before { left: -8px; }
+.jornada-card::after { right: -8px; }
+.jornada-num-block {
+  display: flex; flex-direction: column; align-items: center;
+  padding-right: 18px; border-right: 2px dashed var(--accent-gold-dim); min-width: 64px;
+}
+.jornada-label { font-family: 'Oswald', sans-serif; font-size: .65rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+.jornada-number { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 2rem; line-height: 1; color: var(--accent-gold); }
+.jornada-meta { flex: 1; display: flex; align-items: center; justify-content: space-between; font-size: .9rem; }
+.jornada-meta .chevron { color: var(--accent-gold); }
+.badge-done { font-size: .72rem; background: rgba(78,168,122,.2); color: var(--accent-green); border-radius: 999px; padding: 2px 8px; }
+.badge-pending { font-size: .72rem; background: rgba(216,168,78,.15); color: var(--accent-gold); border-radius: 999px; padding: 2px 8px; }
+
+/* ── standings table ── */
+.standings-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.standings-table th {
+  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-muted);
+  padding: 8px 10px; text-align: center; border-bottom: 1px solid var(--accent-gold-dim);
+  cursor: pointer; user-select: none; white-space: nowrap;
+  transition: color .15s;
+}
+.standings-table th:first-child { text-align: center; }
+.standings-table th:nth-child(2) { text-align: left; cursor: default; }
+.standings-table th.sort-active { color: var(--accent-gold); }
+.standings-table th .sort-arrow { font-size: .65rem; margin-left: 3px; opacity: .7; }
+.standings-table td { padding: 10px 10px; border-bottom: 1px solid rgba(216,168,78,.08); text-align: center; }
+.standings-table td:nth-child(2) { text-align: left; }
+.standings-table tr:last-child td { border-bottom: none; }
+.standings-table .rank { font-family: 'Oswald', sans-serif; font-weight: 700; color: var(--accent-gold); font-size: 1.1rem; }
+.standings-table .pts { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 1rem; color: var(--text-cream); }
+.standings-table .sort-col { background: rgba(216,168,78,.06); }
+.standings-table .live-row { background: rgba(216,168,78,.05); }
+.standings-table .live-dot { font-size: .65rem; vertical-align: 1px; animation: live-pulse 1.4s ease-in-out infinite; }
+@keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.live-legend { font-size: .78rem; color: var(--text-muted); font-family: 'Inter', sans-serif; margin-top: 6px; }
+
+.divider { border: none; border-top: 1px solid var(--accent-gold-dim); margin: 0; }
+
+/* ── bonus: puntos extra ── */
+.bonus-player-card {
+  background: var(--bg-panel); border: 1px solid var(--accent-gold-dim);
+  border-radius: var(--radius); padding: 28px 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center;
+}
+.bonus-player-name { font-family: 'Oswald', sans-serif; font-size: 1.5rem; font-weight: 700; }
+.bonus-score-display {
+  font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 4rem; line-height: 1;
+  color: var(--accent-gold); transition: transform .15s;
+}
+.bonus-score-display.bump { transform: scale(1.18); }
+.bonus-score-btns { display: flex; gap: 12px; }
+.bonus-btn {
+  width: 52px; height: 52px; border-radius: 10px; border: none;
+  font-family: 'Oswald', sans-serif; font-size: 1.6rem; font-weight: 700;
+  cursor: pointer; transition: filter .12s, transform .1s;
+  display: flex; align-items: center; justify-content: center;
+}
+.bonus-btn:active { transform: scale(.92); }
+.bonus-btn.minus { background: rgba(199,84,80,.18); color: var(--accent-red); }
+.bonus-btn.minus:hover { filter: brightness(1.3); }
+.bonus-btn.plus  { background: rgba(78,168,122,.18); color: var(--accent-green); }
+.bonus-btn.plus:hover  { filter: brightness(1.3); }
+.bonus-custom-row { display: flex; gap: 8px; width: 100%; max-width: 220px; }
+.bonus-custom-row input {
+  flex: 1; background: var(--bg-deep); border: 1px solid var(--accent-gold-dim);
+  border-radius: 6px; padding: 8px 12px; color: var(--text-cream);
+  font-family: 'Inter', sans-serif; font-size: .95rem; outline: none; text-align: center;
+}
+.bonus-custom-row input:focus { border-color: var(--accent-gold); }
+.bonus-custom-row button {
+  background: var(--accent-gold-dim); border: 1px solid var(--accent-gold-dim);
+  color: var(--accent-gold); border-radius: 6px; padding: 0 14px;
+  font-family: 'Oswald', sans-serif; font-size: .82rem; text-transform: uppercase; cursor: pointer;
+}
+.bonus-custom-row button:hover { background: var(--accent-gold); color: #1A1409; }
+.bonus-counter { font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+.bonus-nav { display: flex; gap: 12px; }
+.btn-bonus-nav {
+  flex: 1; padding: 14px; border: none; border-radius: var(--radius);
+  font-family: 'Oswald', sans-serif; font-size: .9rem;
+  letter-spacing: .04em; text-transform: uppercase; cursor: pointer; transition: filter .15s;
+}
+.btn-bonus-nav.secondary { background: var(--bg-panel); border: 1px solid var(--accent-gold-dim); color: var(--accent-gold); }
+.btn-bonus-nav.secondary:hover { background: var(--bg-panel-hover); }
+.btn-bonus-nav.primary { background: var(--accent-gold); color: #1A1409; }
+.btn-bonus-nav.primary:hover { filter: brightness(1.08); }
+.btn-bonus-nav:disabled { opacity: .35; cursor: not-allowed; filter: none; }
+.bonus-dots { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.bonus-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--bg-panel); border: 1px solid var(--accent-gold-dim); cursor: pointer;
+}
+.bonus-dot.done { background: var(--accent-green); border-color: var(--accent-green); }
+.bonus-dot.current { border-color: var(--accent-gold); background: var(--accent-gold-dim); }
+.btn-bonus-trigger {
+  width: 100%; padding: 14px; border: 1px solid var(--accent-gold-dim); border-radius: var(--radius);
+  background: var(--bg-panel); color: var(--accent-gold);
+  font-family: 'Oswald', sans-serif; font-size: .88rem;
+  letter-spacing: .03em; text-transform: uppercase; cursor: pointer; transition: background .15s;
+}
+.btn-bonus-trigger:hover { background: var(--bg-panel-hover); }
+
+/* ── selector de participante para contenido individual ── */
+.p-select-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg-panel); border: 1px solid var(--accent-gold-dim);
+  border-radius: 999px; padding: 6px 14px; font-size: .85rem;
+  cursor: pointer; color: var(--text-cream); transition: background .15s, border-color .15s;
+}
+.p-select-chip:hover { background: var(--bg-panel-hover); }
+.p-select-chip.active { border-color: var(--accent-gold); background: var(--accent-gold-dim); color: var(--accent-gold); }
+.p-select-chip .count { font-size: .72rem; color: var(--text-muted); }
+.p-select-chip.active .count { color: var(--accent-gold); }
+.p-select-chip.empty:not(.active) { border-color: rgba(199,84,80,.4); }
+.pcontent-editor {
+  margin-top: 8px; padding: 14px; background: var(--bg-panel);
+  border: 1px solid var(--accent-gold-dim); border-radius: 8px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.pcontent-editor-label { font-size: .85rem; color: var(--accent-gold); font-family: 'Oswald', sans-serif; letter-spacing: .03em; }
+
+/* ── edición de contenido buffet en un torneo ya creado ── */
+.buffet-q-list { display: flex; flex-direction: column; gap: 14px; }
+.buffet-q-editor {
+  background: var(--bg-panel); border: 1px solid var(--accent-gold-dim);
+  border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;
+}
+.buffet-q-num { font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-gold); }
+.buffet-field-label { font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-top: 4px; }
+.buffet-field {
+  background: var(--bg-deep); border: 1px solid var(--accent-gold-dim); border-radius: 6px;
+  padding: 8px 10px; color: var(--text-cream); font-family: 'Inter', sans-serif; font-size: .9rem;
+  outline: none; width: 100%; resize: vertical; line-height: 1.4; box-sizing: border-box;
+}
+.buffet-field:focus { border-color: var(--accent-gold); }
+.buffet-q-rm {
+  align-self: flex-start; background: none; border: none; color: var(--accent-red);
+  font-size: .78rem; cursor: pointer; padding: 4px 0; text-decoration: underline;
+}
+.btn-outline {
+  width: 100%; padding: 14px; border: 1px solid var(--accent-gold-dim); border-radius: var(--radius);
+  background: none; color: var(--accent-gold);
+  font-family: 'Oswald', sans-serif; font-size: .9rem;
+  letter-spacing: .03em; text-transform: uppercase; cursor: pointer;
+}
+.btn-outline:hover { background: var(--bg-panel-hover); }
+
+/* ── progreso por jornada (gráfica) ── */
+.pg-card { background: var(--bg-panel); border: 1px solid var(--accent-gold-dim); border-radius: var(--radius); padding: 14px 10px 8px; }
+.pg-card svg { width: 100%; height: auto; display: block; }
+.pg-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pg-chip {
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px;
+  border-radius: 999px; border: 1px solid var(--accent-gold-dim);
+  background: var(--bg-panel); color: var(--text-cream);
+  font-family: 'Inter', sans-serif; font-size: .82rem; cursor: pointer;
+}
+.pg-chip:hover { background: var(--bg-panel-hover); }
+.pg-chip.off { opacity: .38; }
+.pg-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.pg-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.pg-quick button {
+  background: none; border: 1px solid var(--accent-gold-dim); color: var(--accent-gold);
+  border-radius: 6px; padding: 5px 10px; font-family: 'Oswald', sans-serif;
+  font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
+}
+.pg-quick button:hover { background: var(--bg-panel-hover); }
+.pg-readout-title { font-family: 'Oswald', sans-serif; letter-spacing: .08em; text-transform: uppercase; font-size: .8rem; color: var(--accent-gold); margin-bottom: 8px; }
+.pg-readout-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 14px; }
+.pg-readout-row { display: flex; align-items: center; gap: 7px; font-size: .85rem; }
+.pg-readout-row .n { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-readout-row .v { font-family: 'Oswald', sans-serif; font-weight: 600; color: var(--text-cream); }
+.pg-col { cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module">
+const { loadAll, saveAll, getTournament, saveTournament, deleteTournament: dbDelete, generateRounds, esc, ensureQuestionsByRound, ensureRoundTemas, ensureRoundQuestionsPerTema, addParticipants, partialScore, fmtScore, syncFromApi, API_URL } = await import(`./storage.js?v=${Date.now()}`);
+
+// ── state ──
+let syncState = { loading: false, msg: '', error: false };
+let view = 'home';          // home | form | detail | bonus | add-participants
+let activeTid = null;
+let draftName = '';
+let draftParticipants = [];
+let draftQuestions = [];    // [{ text }]  — legado, ya no se usa para crear (se mantiene para no romper nada)
+let inputMode = 'manual';   // manual | json
+let questionInputMode = 'manual';
+
+// ── shared por jornada: consola de fechas (como buffet, pero atada a las jornadas del torneo) ──
+let draftQuestionsByRound = {};  // { [roundNum]: [{ text }] } — usado cuando contentType === 'shared' y sharedContentMode === 'manual'
+let sharedEditingRound = null;   // jornada (1-based) que se está editando en la consola
+
+let contentType = 'shared';        // 'shared' | 'buffet' (sólo dos tipos al crear; 'individual' queda como legado de torneos viejos)
+let sharedContentMode = 'manual';  // 'manual' | 'temas' — sólo aplica cuando contentType === 'shared'
+let draftRoundTemas = {};          // { [roundNum]: [Tema,...] } — usado cuando contentType === 'shared' y sharedContentMode === 'temas'
+let sharedTemasAssigningRound = null; // jornada (1-based) cuyos temas se están editando en modo 'temas'
+
+let draftParticipantContent = {};  // { [participante]: [{ text }] } — legado, sólo se usa al ver/agregar participantes a torneos viejos 'individual'
+let editingParticipant = null;     // participante que se está editando en modo individual (legado)
+let pcInputMode = 'manual';        // manual | bulk
+
+// ── buffet state ──
+let draftBuffetData = null;             // JSON parseado { Temas: [...] }
+let draftParticipantTemas = {};          // { [participante]: [TemaNum, ...] }
+let buffetAssigningParticipant = null;  // participante cuyos temas se están editando
+let draftQuestionsPerTema = 3;          // 1 | 2 | 3 — cuántas preguntas por tema salen en cada jornada
+
+// ── edición de contenido buffet en un torneo YA CREADO ──
+let editBuffetData = null;   // copia editable de t.buffetData mientras se edita
+let editBuffetTema = null;    // tema seleccionado (number o texto) en la vista de edición
+
+// ── agregar participantes a un torneo YA CREADO ──
+let addNames = [];                 // nombres nuevos a agregar (aún no guardados)
+let addNameInputMode = 'manual';   // manual | bulk
+let addParticipantTemas = {};      // { [name]: [Tema,...] } — sólo si el torneo es buffet
+let addBuffetAssigning = null;     // nuevo participante cuyos temas se están editando
+let addParticipantContent = {};    // { [name]: [{text}] } — sólo si el torneo es individual
+let addEditingParticipant = null;  // nuevo participante cuyo contenido se está editando
+
+// ── utilidades: pegar varias preguntas de una vez en formato { pregunta, respuesta, justificacion } ──
+function parseQuestionsPaste(raw) {
+  let text = raw.trim();
+  let arr = null;
+
+  // 1) intento directo, por si ya viene con los corchetes [ ... ]
+  try { arr = JSON.parse(text); } catch {}
+
+  // 2) si falla, asumimos que son uno o varios objetos { ... } separados por coma sin corchetes
+  if (arr === null) {
+    let wrapped = text;
+    if (!wrapped.trimStart().startsWith('[')) wrapped = '[' + wrapped;
+    if (!wrapped.trimEnd().endsWith(']')) wrapped = wrapped + ']';
+    wrapped = wrapped.replace(/,\s*\]\s*$/, ']'); // saca coma colgante antes del cierre
+    try { arr = JSON.parse(wrapped); } catch { arr = null; }
+  }
+
+  if (arr === null) return null;
+  if (!Array.isArray(arr)) arr = [arr];
+
+  const out = arr
+    .filter(q => q && typeof q === 'object')
+    .map(q => ({
+      pregunta: String(q.pregunta ?? '').trim(),
+      respuesta: String(q.respuesta ?? '').trim(),
+      justificacion: String(q.justificacion ?? '').trim()
+    }))
+    .filter(q => q.pregunta && q.respuesta);
+
+  return out.length ? out : null;
+}
+
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch {}
+  document.body.removeChild(ta);
+}
+
+function downloadJSON(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function slugify(s) {
+  return String(s || 'torneo')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'torneo';
+}
+
+// ── aplica un marcador (final o parcial/en vivo) a las estadísticas de un par de participantes ──
+// Usa las mismas reglas de puntaje en ambos casos, para que la tabla en vivo
+// se comporte igual que la tabla final una vez que el enfrentamiento se cierre.
+function applyScoreToStat(stat, home, away, homeScore, awayScore) {
+  stat[home].score += homeScore;
+  stat[away].score += awayScore;
+  if (homeScore > 0) stat[home].asist = (stat[home].asist || 0) + 1;
+  if (awayScore > 0) stat[away].asist = (stat[away].asist || 0) + 1;
+  if (homeScore > awayScore) {
+    stat[home].v++; stat[away].d++;
+    stat[home].pts += 3;
+    stat[away].pts += awayScore >= 1 ? 1 : 0;
+  } else if (awayScore > homeScore) {
+    stat[away].v++; stat[home].d++;
+    stat[away].pts += 3;
+    stat[home].pts += homeScore >= 1 ? 1 : 0;
+  } else {
+    stat[home].e++; stat[away].e++;
+    const drawPts = homeScore >= 1 ? 2 : 0; // 0-0 no otorga puntos
+    stat[home].pts += drawPts; stat[away].pts += drawPts;
+  }
+}
+
+// ── clasificación final (independiente del orden de columna elegido en pantalla) ──
+// Incluye tanto enfrentamientos cerrados (m.result) como en curso con progreso
+// autoguardado (m.progress), igual que la tabla en pantalla, para que el Top 5
+// generado como imagen refleje resultados parciales y no solo los finalizados.
+function computeRanking(t) {
+  const stat = {};
+  const bonus = t.bonusPoints || {};
+  t.participants.forEach(p => { stat[p] = { v: 0, e: 0, d: 0, pts: 0, score: 0, asist: 0, live: false }; });
+
+  t.rounds.forEach(round => round.forEach(m => {
+    if (m.result) {
+      applyScoreToStat(stat, m.home, m.away, m.result.homeScore, m.result.awayScore);
+      return;
+    }
+    const partial = partialScore(m);
+    if (partial) {
+      applyScoreToStat(stat, m.home, m.away, partial.home, partial.away);
+      stat[m.home].live = true;
+      stat[m.away].live = true;
+    }
+  }));
+
+  const total = p => stat[p].pts + (bonus[p] || 0);
+  const ranking = [...t.participants].sort((a, b) => total(b) - total(a) || stat[b].score - stat[a].score);
+  return { ranking, stat, bonus, total };
+}
+
+// ── jornadas completadas de forma contigua desde la primera (para el pie "hasta la jornada X de Y") ──
+function completedRoundsCount(t) {
+  let completed = 0;
+  for (const round of t.rounds) {
+    if (round.length > 0 && round.every(m => m.result)) completed++;
+    else break;
+  }
+  return completed;
+}
+
+// ── genera la imagen épica del Top 5 como PNG (data URL) ──
+async function generateTop5Image(t) {
+  const { ranking, stat } = computeRanking(t);
+  const top5 = ranking.slice(0, 5);
+  const hasLiveInTop5 = top5.some(name => stat[name].live);
+  const completed = completedRoundsCount(t);
+  const totalRounds = t.rounds.length;
+
+  try {
+    await Promise.all([
+      document.fonts.load('700 60px Oswald'),
+      document.fonts.load('600 44px Oswald'),
+      document.fonts.load('600 28px Oswald'),
+      document.fonts.load('500 30px Inter'),
+    ]);
+  } catch {}
+
+  const W = 1080, H = 1350;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // fondo degradado
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#22352A');
+  grad.addColorStop(1, '#0E1712');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // marcos dorados
+  ctx.strokeStyle = 'rgba(216,168,78,.55)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(36, 36, W - 72, H - 72);
+  ctx.strokeStyle = 'rgba(216,168,78,.22)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(52, 52, W - 104, H - 104);
+
+  ctx.textAlign = 'center';
+
+  // eyebrow
+  ctx.fillStyle = '#D8A84E';
+  ctx.font = '600 26px Oswald';
+  ctx.fillText('C L A S I F I C A C I Ó N', W / 2, 150);
+
+  // título del torneo (con wrap si es largo)
+  ctx.fillStyle = '#F1ECE0';
+  ctx.font = '700 52px Oswald';
+  drawWrappedText(ctx, String(t.name).toUpperCase(), W / 2, 225, W - 200, 58, 2);
+
+  // trofeo
+  ctx.font = '84px serif';
+  ctx.fillText('🏆', W / 2, 355);
+
+  // línea decorativa
+  ctx.strokeStyle = 'rgba(216,168,78,.4)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(W / 2 - 90, 385); ctx.lineTo(W / 2 + 90, 385); ctx.stroke();
+
+  // top 5
+  const medals = ['🥇', '🥈', '🥉', '4º', '5º'];
+  const startY = 480;
+  const rowH = 145;
+  top5.forEach((name, i) => {
+    const y = startY + i * rowH;
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#D8A84E';
+    ctx.font = i < 3 ? '58px serif' : '700 44px Oswald';
+    ctx.fillText(medals[i], 90, y);
+
+    ctx.fillStyle = '#F1ECE0';
+    ctx.font = '600 42px Oswald';
+    const displayName = String(name).toUpperCase();
+    const liveMark = stat[name].live ? ' 🔴' : '';
+    const fitted = fitTextToWidth(ctx, displayName, W - (stat[name].live ? 360 : 300)) + liveMark;
+    ctx.fillText(fitted, 210, y);
+
+    if (i < top5.length - 1) {
+      ctx.strokeStyle = 'rgba(216,168,78,.16)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(90, y + 42); ctx.lineTo(W - 90, y + 42); ctx.stroke();
+    }
+  });
+
+  // pie: jornada
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8FA293';
+  ctx.font = '500 30px Inter';
+  const baseFooter = completed > 0
+    ? `Hasta la jornada ${completed} de ${totalRounds}`
+    : `${totalRounds} jornada${totalRounds === 1 ? '' : 's'} · aún sin comenzar`;
+  const footer = hasLiveInTop5 ? `${baseFooter} · 🔴 incluye resultados en curso` : baseFooter;
+  ctx.fillText(footer, W / 2, H - 80);
+
+  return { dataUrl: canvas.toDataURL('image/png'), filename: `${slugify(t.name)}-top5.png` };
+}
+
+// recorta el texto con "…" si no entra en el ancho disponible
+function fitTextToWidth(ctx, text, maxWidth) {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let t = text;
+  while (t.length > 1 && ctx.measureText(t + '…').width > maxWidth) t = t.slice(0, -1);
+  return t + '…';
+}
+
+// dibuja texto centrado con salto de línea automático (hasta maxLines)
+function drawWrappedText(ctx, text, cx, y, maxWidth, lineHeight, maxLines) {
+  const words = text.split(' ');
+  const lines = [];
+  let line = '';
+  words.forEach(w => {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  });
+  if (line) lines.push(line);
+  const shown = lines.slice(0, maxLines);
+  if (lines.length > maxLines) shown[maxLines - 1] = fitTextToWidth(ctx, shown[maxLines - 1], maxWidth);
+  shown.forEach((l, i) => ctx.fillText(l, cx, y + i * lineHeight));
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── CERTIFICADOS EN PDF ──
+// Genera un PDF: portada con el medallero del torneo + una página-certificado
+// por cada participante. Cada certificado certifica la participación de forma
+// general y además, para cada "ítem" de la tabla de clasificación en el que el
+// participante quedó entre los 5 primeros, muestra esa posición (puesto 1º-3º
+// con medalla de color; 4º y 5º solo como texto, sin medalla). Ítems con valor
+// 0 no otorgan posición (no cuenta como logro real).
+// ══════════════════════════════════════════════════════════════════════════
+
+const CERT_ITEM_DEFS = [
+  { key: 'pts',   label: 'Puntos',                get: (p, S) => S.stat[p].pts },
+  { key: 'score', label: 'Puntaje',               get: (p, S) => S.stat[p].score },
+  { key: 'wins',  label: 'Victorias',             get: (p, S) => S.stat[p].v },
+  { key: 'ratio', label: 'Ratio de acierto',       get: (p, S) => S.ratioEligible(p) ? S.ratio(p) : 0 },
+  { key: 'asist', label: 'Asistencia',            get: (p, S) => S.stat[p].asist || 0 },
+  { key: 'bonus', label: 'Puntos extra',          get: (p, S) => S.bonus[p] || 0, onlyIf: S => S.hasBonus },
+];
+
+const CERT_MEDAL_COLORS = { 1: '#D8A84E', 2: '#B9C1BC', 3: '#C08554' };
+const CERT_MEDAL_FILL = {
+  1: ['#F3D48B', '#D8A84E', '#8B6423'],
+  2: ['#E7ECE9', '#C4CCC7', '#7C847F'],
+  3: ['#E3A876', '#C08554', '#7A4E2D'],
+};
+
+// ── ítems "fijos": no dependen de la tabla de clasificación, se otorgan
+// directamente a TODOS los participantes con el puesto/medalla indicado ──
+const CERT_FIXED_ITEMS = [
+  { label: 'Campamento', position: 3 }, // bronce para todos
+];
+
+// ── ranking "denso" de un ítem: se toman los 5 VALORES distintos más altos
+// (> 0) y cada uno es una medalla (oro, plata, bronce, 4º, 5º); todos los
+// participantes que comparten ese valor reciben esa misma medalla, sin
+// importar cuántos sean en total (empatar no "gasta" cupo de otros puestos) ──
+function rankByValue(participants, valueFn) {
+  const vals = participants
+    .map(p => ({ p, v: valueFn(p) }))
+    .filter(x => x.v > 0);
+  const distinctValues = [...new Set(vals.map(x => x.v))]
+    .sort((a, b) => b - a)
+    .slice(0, 5);
+  const positionByValue = new Map(distinctValues.map((v, i) => [v, i + 1]));
+  const out = [];
+  vals.forEach(x => {
+    const position = positionByValue.get(x.v);
+    if (position === undefined) return; // fuera de los 5 valores más altos
+    out.push({ participant: x.p, value: x.v, position });
+  });
+  return out;
+}
+
+// ── logros (posición ≤5) por participante + conteo de medallero (incluye 4º y 5º) ──
+// "Clasificación General" ya NO se calcula por puntos (eso ya lo cubre el ítem
+// "Puntos"): corresponde a la posición de cada participante en el medallero,
+// es decir, según las medallas que ganó en el resto de ítems.
+function computeCertificateData(t) {
+  const S = computeFullStats(t);
+  const items = CERT_ITEM_DEFS.filter(def => def.key !== 'total' && (!def.onlyIf || def.onlyIf(S)));
+
+  const achievements = {}; // nombre -> [{ label, position }], ordenado por posición
+  const medals = {};       // nombre -> { oro, plata, bronce, cuarto, quinto }
+  t.participants.forEach(p => { achievements[p] = []; medals[p] = { oro:0, plata:0, bronce:0, cuarto:0, quinto:0 }; });
+
+  items.forEach(def => {
+    rankByValue(t.participants, p => def.get(p, S)).forEach(r => {
+      if (r.position > 5) return;
+      achievements[r.participant].push({ label: def.label, position: r.position });
+      const bucket = { 1:'oro', 2:'plata', 3:'bronce', 4:'cuarto', 5:'quinto' }[r.position];
+      medals[r.participant][bucket]++;
+    });
+  });
+
+  // ítems "fijos": se otorgan a todos los participantes por igual
+  CERT_FIXED_ITEMS.forEach(def => {
+    t.participants.forEach(p => {
+      achievements[p].push({ label: def.label, position: def.position });
+      const bucket = { 1:'oro', 2:'plata', 3:'bronce', 4:'cuarto', 5:'quinto' }[def.position];
+      medals[p][bucket]++;
+    });
+  });
+
+  // ── orden del medallero (más medallas de mayor valor primero) ──
+  const medalOrder = [...t.participants].sort((a, b) => {
+    const ma = medals[a], mb = medals[b];
+    return (mb.oro - ma.oro) || (mb.plata - ma.plata) || (mb.bronce - ma.bronce)
+      || ((mb.cuarto + mb.quinto) - (ma.cuarto + ma.quinto))
+      || S.total(b) - S.total(a)
+      || a.localeCompare(b, 'es', { sensitivity: 'base' });
+  });
+
+  // ── "Clasificación General" = posición en ese medallero (solo participantes
+  // con alguna actividad real en el torneo, igual que antes) ──
+  let cgPosition = 0;
+  medalOrder.forEach(p => {
+    if (S.total(p) <= 0) return;
+    cgPosition++;
+    if (cgPosition > 5) return;
+    achievements[p].push({ label: 'Clasificación General', position: cgPosition });
+    const bucket = { 1:'oro', 2:'plata', 3:'bronce', 4:'cuarto', 5:'quinto' }[cgPosition];
+    medals[p][bucket]++;
+  });
+
+  t.participants.forEach(p => achievements[p].sort((a, b) => a.position - b.position));
+
+  return { achievements, medals, medalOrder };
+}
+
+// ── helpers geométricos de decoración (marco, laureles, sellos, medallas) ──
+function drawDiamond(ctx, x, y, r, color) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(Math.PI / 4);
+  ctx.fillStyle = color;
+  ctx.fillRect(-r, -r, r * 2, r * 2);
+  ctx.restore();
+}
+
+function drawLeaf(ctx, x, y, angle, length, width, color) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.quadraticCurveTo(length * 0.42, -width, length, 0);
+  ctx.quadraticCurveTo(length * 0.42, width, 0, 0);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.restore();
+}
+
+// una rama de laurel creciendo hacia arriba desde (originX, originY); side=+1 derecha, -1 izquierda
+function drawLaurelBranch(ctx, originX, originY, side, scale, color) {
+  const count = 8;
+  const pts = [];
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.4 * scale;
+  ctx.beginPath();
+  ctx.moveTo(originX, originY);
+  for (let i = 0; i <= count; i++) {
+    const t = i / count;
+    const x = originX + side * (14 + t * 78) * scale;
+    const y = originY - t * 108 * scale;
+    pts.push([x, y]);
+    ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  pts.forEach(([x, y], i) => {
+    if (i === 0) return;
+    const t = i / count;
+    const leafLen = (17 - t * 6) * scale;
+    const leafW = 6.5 * scale;
+    const stemAngle = Math.atan2(y - pts[i - 1][1], x - pts[i - 1][0]);
+    const outAngle = stemAngle + side * (Math.PI / 2.15);
+    drawLeaf(ctx, x, y, outAngle, leafLen, leafW, color);
+  });
+}
+
+// corona de laurel completa (dos ramas simétricas), usada como emblema decorativo
+function drawLaurelWreath(ctx, cx, cy, scale, color) {
+  drawLaurelBranch(ctx, cx - 4 * scale, cy + 6 * scale, -1, scale, color);
+  drawLaurelBranch(ctx, cx + 4 * scale, cy + 6 * scale, 1, scale, color);
+}
+
+function drawStar(ctx, cx, cy, outerR, innerR, points, color, rotation = -Math.PI / 2) {
+  ctx.save();
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const a = rotation + (i * Math.PI) / points;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.restore();
+}
+
+// línea divisoria fina con un rombo dorado en el centro
+function drawDividerWithDiamond(ctx, x1, x2, y, color) {
+  const midGap = 10;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo((x1 + x2) / 2 - midGap, y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo((x1 + x2) / 2 + midGap, y); ctx.lineTo(x2, y); ctx.stroke();
+  ctx.restore();
+  drawDiamond(ctx, (x1 + x2) / 2, y, 4.5, color);
+}
+
+// ornamento de esquina: doble línea en escuadra + rombo, a juego con el marco
+function drawCornerOrnament(ctx, x, y, corner, color) {
+  const sx = corner === 'tr' || corner === 'br' ? -1 : 1;
+  const sy = corner === 'bl' || corner === 'br' ? -1 : 1;
+  const len = 46;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y + sy * len); ctx.lineTo(x, y); ctx.lineTo(x + sx * len, y);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  ctx.moveTo(x + sx * 9, y + sy * 26); ctx.lineTo(x + sx * 9, y + sy * 9); ctx.lineTo(x + sx * 26, y + sy * 9);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  drawDiamond(ctx, x, y, 4.5, color);
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// ── fondo con viñeta radial + textura sutil de líneas diagonales ──
+function drawCertBackground(ctx, W, H) {
+  const grad = ctx.createRadialGradient(W / 2, H * 0.35, H * 0.15, W / 2, H * 0.55, H * 0.95);
+  grad.addColorStop(0, '#25392C');
+  grad.addColorStop(0.55, '#182720');
+  grad.addColorStop(1, '#0A100D');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.globalAlpha = 0.035;
+  ctx.strokeStyle = '#D8A84E';
+  ctx.lineWidth = 1;
+  for (let x = -H; x < W; x += 34) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + H, H); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ── dibuja el marco decorativo dorado común a todas las páginas ──
+function drawCertFrame(ctx, W, H) {
+  drawCertBackground(ctx, W, H);
+  ctx.strokeStyle = 'rgba(216,168,78,.6)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(40, 40, W - 80, H - 80);
+  ctx.strokeStyle = 'rgba(216,168,78,.28)';
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(56, 56, W - 112, H - 112);
+
+  const gold = 'rgba(216,168,78,.85)';
+  drawCornerOrnament(ctx, 56, 56, 'tl', gold);
+  drawCornerOrnament(ctx, W - 56, 56, 'tr', gold);
+  drawCornerOrnament(ctx, 56, H - 56, 'bl', gold);
+  drawCornerOrnament(ctx, W - 56, H - 56, 'br', gold);
+}
+
+// ── medalla metálica circular con número y cinta (para los certificados) ──
+function drawMedalBadge(ctx, x, y, r, position, withRibbon) {
+  const colors = CERT_MEDAL_FILL[position];
+  if (withRibbon) {
+    ctx.save();
+    const rw = r * 0.62;
+    ctx.fillStyle = position === 1 ? '#8B2E2E' : position === 2 ? '#3E5E6E' : '#5B3A22';
+    ctx.beginPath();
+    ctx.moveTo(x - rw, y); ctx.lineTo(x - rw, y + r * 1.9); ctx.lineTo(x, y + r * 1.35);
+    ctx.lineTo(x + rw, y + r * 1.9); ctx.lineTo(x + rw, y); ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  const grad = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.15, x, y, r * 1.05);
+  grad.addColorStop(0, colors[0]); grad.addColorStop(0.6, colors[1]); grad.addColorStop(1, colors[2]);
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = grad; ctx.fill();
+  ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, r - 4, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.font = `700 ${Math.round(r * 1.05)}px Oswald`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(String(position), x, y + 1);
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+}
+
+// ── anillo simple para 4º/5º puesto (sin color de medalla) ──
+function drawRankRing(ctx, x, y, r, position) {
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(216,168,78,.65)'; ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.fillStyle = '#D8A84E';
+  ctx.font = `600 ${Math.round(r * 0.95)}px Oswald`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(String(position) + 'º', x, y + 1);
+  ctx.textBaseline = 'alphabetic';
+  ctx.restore();
+}
+
+// ── sello tipo medallón (borde festoneado) para el pie del certificado ──
+function drawSealMedallion(ctx, cx, cy, r) {
+  ctx.save();
+  const scallops = 22;
+  ctx.beginPath();
+  for (let i = 0; i < scallops; i++) {
+    const a0 = (i / scallops) * Math.PI * 2;
+    const a1 = ((i + 1) / scallops) * Math.PI * 2;
+    const mid = (a0 + a1) / 2;
+    ctx.lineTo(cx + Math.cos(mid) * r * 1.08, cy + Math.sin(mid) * r * 1.08);
+    ctx.lineTo(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r);
+  }
+  ctx.closePath();
+  const grad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r * 1.1);
+  grad.addColorStop(0, '#F3D48B'); grad.addColorStop(0.65, '#D8A84E'); grad.addColorStop(1, '#8B6423');
+  ctx.fillStyle = grad; ctx.fill();
+  ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.78, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(26,20,9,.55)'; ctx.lineWidth = 1.2; ctx.stroke();
+  drawStar(ctx, cx, cy, r * 0.34, r * 0.14, 5, 'rgba(26,20,9,.65)');
+  ctx.restore();
+}
+
+// ── portada: medallero del torneo (de más a menos medallas; incluye 4º y 5º) ──
+function drawMedalleroPage(t, medalOrder, medals, displayName) {
+  const W = 1600, H = 1131;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  drawCertFrame(ctx, W, H);
+  const cx = W / 2;
+
+  drawLaurelWreath(ctx, cx, 118, 1.05, 'rgba(216,168,78,.85)');
+  drawStar(ctx, cx, 98, 15, 6.5, 5, '#D8A84E');
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#D8A84E';
+  ctx.font = '600 23px Oswald';
+  ctx.fillText('M E D A L L E R O', cx, 166);
+
+  ctx.fillStyle = '#F1ECE0';
+  ctx.font = '700 42px Oswald';
+  drawWrappedText(ctx, String(t.name).toUpperCase(), cx, 216, W - 300, 50, 2);
+
+  drawDividerWithDiamond(ctx, cx - 150, cx + 150, 258, 'rgba(216,168,78,.5)');
+
+  // cabecera de columnas
+  const colX = { rank: 112, name: 172, oro: 1010, plata: 1140, bronce: 1270, cuarto: 1395, quinto: 1500 };
+  const headerY = 316;
+  ctx.font = '600 20px Oswald';
+  ctx.fillStyle = '#8FA293';
+  ctx.textAlign = 'left';
+  ctx.fillText('#', colX.rank - 14, headerY);
+  ctx.fillText('P A R T I C I P A N T E', colX.name, headerY);
+
+  drawMedalBadge(ctx, colX.oro, headerY - 8, 15, 1, false);
+  drawMedalBadge(ctx, colX.plata, headerY - 8, 15, 2, false);
+  drawMedalBadge(ctx, colX.bronce, headerY - 8, 15, 3, false);
+  ctx.textAlign = 'center';
+  ctx.font = '600 18px Oswald';
+  ctx.fillStyle = '#8FA293';
+  ctx.fillText('4º', colX.cuarto, headerY);
+  ctx.fillText('5º', colX.quinto, headerY);
+
+  ctx.strokeStyle = 'rgba(216,168,78,.32)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(90, headerY + 24); ctx.lineTo(W - 90, headerY + 24); ctx.stroke();
+
+  const bodyTop = headerY + 54;
+  const bodyBottom = H - 130;
+  const n = medalOrder.length;
+  const rowH = Math.max(30, Math.min(66, (bodyBottom - bodyTop) / n));
+  const nameFontPx = Math.max(18, Math.min(28, rowH * 0.46));
+  const numFontPx = Math.max(17, Math.min(24, rowH * 0.4));
+  const medalTextColor = { 1: '#D8A84E', 2: '#C9D0CB', 3: '#D3936A' };
+
+  medalOrder.forEach((name, i) => {
+    const rowY = bodyTop + i * rowH;
+    const y = rowY + rowH * 0.66;
+    const m = medals[name];
+    const totalMedals = m.oro + m.plata + m.bronce;
+
+    if (i % 2 === 0) {
+      ctx.fillStyle = 'rgba(216,168,78,.035)';
+      ctx.fillRect(90, rowY + rowH * 0.06, W - 180, rowH * 0.88);
+    }
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = i < 3 ? medalTextColor[i + 1] : '#8FA293';
+    ctx.font = `700 ${nameFontPx}px Oswald`;
+    ctx.fillText(String(i + 1), colX.rank, y);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = totalMedals > 0 ? '#F1ECE0' : '#8B978F';
+    ctx.font = `${totalMedals > 0 ? '600' : '400'} ${nameFontPx}px Oswald`;
+    const fitted = fitTextToWidth(ctx, String(displayName(name)).toUpperCase(), colX.oro - colX.name - 40);
+    ctx.fillText(fitted, colX.name, y);
+
+    ctx.textAlign = 'center';
+    ctx.font = `600 ${numFontPx}px Oswald`;
+    ctx.fillStyle = m.oro    > 0 ? '#D8A84E' : 'rgba(143,162,147,.35)'; ctx.fillText(String(m.oro),    colX.oro,    y);
+    ctx.fillStyle = m.plata  > 0 ? '#C9D0CB' : 'rgba(143,162,147,.35)'; ctx.fillText(String(m.plata),  colX.plata,  y);
+    ctx.fillStyle = m.bronce > 0 ? '#D3936A' : 'rgba(143,162,147,.35)'; ctx.fillText(String(m.bronce), colX.bronce, y);
+    ctx.fillStyle = m.cuarto > 0 ? '#8FA293' : 'rgba(143,162,147,.3)';  ctx.fillText(String(m.cuarto), colX.cuarto, y);
+    ctx.fillStyle = m.quinto > 0 ? '#8FA293' : 'rgba(143,162,147,.3)';  ctx.fillText(String(m.quinto), colX.quinto, y);
+
+    if (i < n - 1) {
+      ctx.strokeStyle = 'rgba(216,168,78,.09)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(90, rowY + rowH); ctx.lineTo(W - 90, rowY + rowH); ctx.stroke();
+    }
+  });
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8FA293';
+  ctx.font = '500 19px Inter';
+  ctx.fillText('Medallas = puestos 1º a 3º del ítem   ·   4º / 5º = puesto sin medalla', cx, H - 60);
+
+  return canvas.toDataURL('image/jpeg', 0.93);
+}
+
+// ── página-certificado de un participante ──
+function drawCertificatePage(t, name, achievementList, dateStr) {
+  const W = 1600, H = 1131;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  drawCertFrame(ctx, W, H);
+  const cx = W / 2;
+
+  drawLaurelWreath(ctx, cx, 120, 1.05, 'rgba(216,168,78,.85)');
+  drawStar(ctx, cx, 100, 15, 6.5, 5, '#D8A84E');
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#D8A84E';
+  ctx.font = '600 23px Oswald';
+  ctx.fillText('C E R T I F I C A D O   D E   P A R T I C I P A C I Ó N', cx, 168);
+
+  drawDividerWithDiamond(ctx, cx - 150, cx + 150, 188, 'rgba(216,168,78,.5)');
+
+  ctx.fillStyle = '#8FA293';
+  ctx.font = '500 22px Inter';
+  ctx.fillText('S E   C E R T I F I C A   Q U E', cx, 240);
+
+  ctx.fillStyle = '#F1ECE0';
+  ctx.font = '700 64px Oswald';
+  const fittedName = fitTextToWidth(ctx, String(name).toUpperCase(), W - 320);
+  ctx.fillText(fittedName, cx, 318);
+
+  const nameWidth = Math.min(ctx.measureText(fittedName).width + 90, 720);
+  ctx.strokeStyle = 'rgba(216,168,78,.45)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(cx - nameWidth / 2, 340); ctx.lineTo(cx + nameWidth / 2, 340); ctx.stroke();
+  drawDiamond(ctx, cx, 340, 4, 'rgba(216,168,78,.7)');
+
+  ctx.fillStyle = '#8FA293';
+  ctx.font = '500 26px Inter';
+  drawWrappedText(ctx, `participó y tuvo una destacada participación en el torneo "${t.name}"`, cx, 392, W - 400, 36, 2);
+
+  const listTop = 462;
+  const listBottom = H - 262;
+  const n = achievementList.length;
+
+  if (n === 0) {
+    const midY = (listTop + listBottom) / 2;
+    drawLaurelWreath(ctx, cx, midY - 56, 0.72, 'rgba(216,168,78,.4)');
+    ctx.fillStyle = '#D8A84E';
+    ctx.font = '600 28px Oswald';
+    ctx.fillText('¡Gracias por participar y dar lo mejor en cada jornada!', cx, midY + 14);
+  } else {
+    const colW = 660;
+    const rowH = Math.max(56, Math.min(82, (listBottom - listTop) / n));
+    const blockH = rowH * n;
+    const top0 = listTop + Math.max(0, (listBottom - listTop - blockH) / 2);
+    const startX = cx - colW / 2;
+    achievementList.forEach((a, i) => {
+      const rowY = top0 + i * rowH;
+      const y = rowY + rowH * 0.6;
+      const badgeX = startX + 28;
+      roundRectPath(ctx, startX - 20, rowY + rowH * 0.1, colW + 40, rowH * 0.8, 10);
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(216,168,78,.055)' : 'rgba(216,168,78,.02)';
+      ctx.fill();
+      if (a.position <= 3) {
+        drawMedalBadge(ctx, badgeX, y - 8, Math.min(23, rowH * 0.28), a.position, true);
+      } else {
+        drawRankRing(ctx, badgeX, y - 8, Math.min(21, rowH * 0.26), a.position);
+      }
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#F1ECE0';
+      ctx.font = `500 ${Math.round(Math.min(28, rowH * 0.33))}px Inter`;
+      ctx.fillText(`Puesto ${a.position}º en `, badgeX + 44, y);
+      const prefixW = ctx.measureText(`Puesto ${a.position}º en `).width;
+      ctx.fillStyle = '#D8A84E';
+      ctx.font = `600 ${Math.round(Math.min(28, rowH * 0.33))}px Inter`;
+      ctx.fillText(a.label, badgeX + 44 + prefixW, y);
+      ctx.textAlign = 'center';
+    });
+  }
+
+  // ── pie: bloque tipo firma/sello, en dos columnas ──
+  const footerLineY = H - 190;
+  ctx.strokeStyle = 'rgba(216,168,78,.28)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(140, footerLineY); ctx.lineTo(W - 140, footerLineY); ctx.stroke();
+
+  const leftX = cx - 260;
+  const rightX = cx + 260;
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(216,168,78,.75)';
+  ctx.font = '600 15px Oswald';
+  ctx.fillText('F E C H A   D E   E M I S I Ó N', leftX, footerLineY + 38);
+  ctx.fillStyle = '#F1ECE0';
+  ctx.font = '500 23px Inter';
+  ctx.fillText(dateStr, leftX, footerLineY + 70);
+
+  drawSealMedallion(ctx, rightX, footerLineY + 44, 30);
+  ctx.fillStyle = 'rgba(216,168,78,.75)';
+  ctx.font = '600 15px Oswald';
+  ctx.fillText('O R G A N I Z A D O R   D E   T O R N E O S', rightX, footerLineY + 92);
+
+  return canvas.toDataURL('image/jpeg', 0.93);
+}
+
+// ── arma el PDF completo (portada + un certificado por participante) y lo descarga ──
+async function generateCertificatesPDF(t) {
+  if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('No se pudo cargar la librería de PDF.');
+  try {
+    await Promise.all([
+      document.fonts.load('700 64px Oswald'),
+      document.fonts.load('700 42px Oswald'),
+      document.fonts.load('600 23px Oswald'),
+      document.fonts.load('600 28px Oswald'),
+      document.fonts.load('600 20px Oswald'),
+      document.fonts.load('600 15px Oswald'),
+      document.fonts.load('500 26px Inter'),
+      document.fonts.load('500 22px Inter'),
+      document.fonts.load('600 28px Inter'),
+    ]);
+  } catch {}
+
+  const { achievements, medals, medalOrder } = computeCertificateData(t);
+  const dateStr = new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const realNames = t.realNames || {};
+  const displayName = p => (realNames[p] && String(realNames[p]).trim()) || p;
+
+  const coverImg = drawMedalleroPage(t, medalOrder, medals, displayName);
+  const orderedNames = [...t.participants].sort((a, b) => displayName(a).localeCompare(displayName(b), 'es', { sensitivity: 'base' }));
+  const certImgs = orderedNames.map(name => drawCertificatePage(t, displayName(name), achievements[name], dateStr));
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+
+  doc.addImage(coverImg, 'JPEG', 0, 0, pw, ph);
+  certImgs.forEach(img => {
+    doc.addPage();
+    doc.addImage(img, 'JPEG', 0, 0, pw, ph);
+  });
+
+  doc.save(`${slugify(t.name)}-certificados.pdf`);
+}
+
+// ── edición de contenido shared (por jornada) en un torneo YA CREADO ──
+let editSharedData = null;   // copia editable de questionsByRound mientras se edita
+let editRealNames = null;    // copia editable de t.realNames (seudónimo → nombre real) mientras se edita
+let editSharedRound = null;  // jornada (1-based) seleccionada en la vista de edición
+
+// ── edición de la asignación de TEMAS por jornada (modo 'temas') en un torneo YA CREADO ──
+let editRoundTemas = null;        // copia editable de t.roundTemas mientras se edita
+let editRoundTemasRound = null;   // jornada (1-based) seleccionada en la vista de edición
+let editRoundQuestionsPerTema = null; // copia editable de t.roundQuestionsPerTema (cantidad de preguntas por tema, por jornada)
+
+// ── bonus: puntos extra al final del torneo ──
+let bonusIdx = 0;             // índice del participante actual en la fase bonus
+let bonusScores = {};         // { [nombre]: número } — acumula durante la sesión
+
+// ── ordenamiento de tabla de clasificación ──
+let sortBy = 'total';         // 'total' | 'pts' | 'score' | 'wins' | 'draws' | 'bonus'
+let teamSortBy = 'total';     // clasificación por clubes / iglesias: 'total' (suma) | 'avg' (promedio por miembro)
+
+// ── ocultar resultados (suspenso): tabla de posiciones y marcadores en vivo ──
+let draftHideResults = false;  // valor elegido al crear el torneo
+let standingsRevealed = false; // revelado temporal (por sesión) de la tabla de posiciones
+
+// ── imagen épica del Top 5 ──
+let rankingImageDataUrl = null;  // data URL del PNG generado (null = sin overlay abierto)
+let rankingImageFilename = 'top5.png';
+
+// ── progreso por jornada (gráfica) ──
+let progressMetric = 'pts';    // 'pts' | 'score' | 'pct'
+let progressMode = 'cum';      // 'cum' (acumulado) | 'round' (solo esa jornada)
+let progressSelected = null;   // Set de participantes visibles en la gráfica
+let progressFocus = null;      // índice (0-based) de la jornada resaltada
+let progressCache = null;      // { t, series, geo } para actualizar el detalle sin re-renderizar
+
+// ── abrir torneo directamente si llega ?open=ID (ej. al volver desde Jornada.html) ──
+const initParams = new URLSearchParams(location.search);
+const openId = initParams.get('open');
+if (openId) { activeTid = openId; view = 'detail'; }
+
+// ── helpers ──
+function sharedContentSummary(t) {
+  if (t.buffetData && t.roundTemas) {
+    const roundsWithTemas = Object.values(t.roundTemas).filter(a => a && a.length).length;
+    return `temas · ${(t.buffetData.Temas||[]).length} temas cargados · ${roundsWithTemas}/${t.rounds.length} jornadas con temas asignados`;
+  }
+  if (t.questionsByRound && t.questionsByRound.length) {
+    const totalQ = t.questionsByRound.reduce((s, r) => s + (r.questions?.length || 0), 0);
+    return `${totalQ} pregunta${totalQ===1?'':'s'} · ${t.questionsByRound.length} jornada${t.questionsByRound.length===1?'':'s'} con contenido propio`;
+  }
+  return `${t.questions.length} pregunta${t.questions.length===1?'':'s'}`;
+}
+
+function syncDraftName() {
+  const el = document.getElementById('tournamentNameInput');
+  if (el) draftName = el.value;
+}
+
+// ── renders ──
+function render() {
+  if (view === 'home') renderHome();
+  else if (view === 'form') renderForm();
+  else if (view === 'detail') renderDetail();
+  else if (view === 'bonus') renderBonus();
+  else if (view === 'buffet-edit') renderBuffetEdit();
+  else if (view === 'shared-edit') renderSharedEdit();
+  else if (view === 'round-temas-edit') renderRoundTemasEdit();
+  else if (view === 'add-participants') renderAddParticipants();
+  else if (view === 'real-names-edit') renderRealNamesEdit();
+  else if (view === 'progress') renderProgress();
+}
+
+function renderHome() {
+  const tournaments = loadAll();
+  const cards = tournaments.map(t => `
+    <div class="t-card">
+      <div class="t-card-actions">
+        <button class="t-card-icon-btn" data-action="export-tournament" data-id="${t.id}" title="Exportar como JSON">⬇</button>
+        <button class="t-card-icon-btn t-card-delete" data-action="delete" data-id="${t.id}" title="Eliminar">×</button>
+      </div>
+      <div class="t-card-body" data-action="open" data-id="${t.id}">
+        <h3>${esc(t.name)}</h3>
+        <p>${t.participants.length} participantes · ${t.rounds.length} jornada${t.rounds.length===1?'':'s'} · ${t.contentType === 'individual' ? 'contenido individual' : t.contentType === 'buffet' ? `buffet ${(t.buffetData?.Temas||[]).length} temas` : sharedContentSummary(t)}</p>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('app').innerHTML = `
+    <div class="page">
+      <header class="page-header">
+        <span class="eyebrow">Organizador</span>
+        <h1>Torneos</h1>
+      </header>
+      <div class="home-actions">
+        <button class="cta-add" data-action="sync-api" ${syncState.loading ? 'disabled' : ''}><span class="plus">⟳</span><span>${syncState.loading ? 'Sincronizando…' : 'Sincronizar torneos'}</span></button>
+      </div>
+      ${syncState.msg ? `<p class="hint" style="margin:0 0 12px;${syncState.error ? 'color:#e07070' : ''}">${esc(syncState.msg)}</p>` : ''}
+      <section>
+        <h2 class="section-title">Torneos</h2>
+        ${tournaments.length === 0
+          ? '<p class="empty-state">Aún no hay torneos. Se crean desde el worker (con al menos 2 inscritos y un tema con preguntas); luego pulsa «Sincronizar torneos».</p>'
+          : `<div class="t-grid">${cards}</div>`}
+      </section>
+    </div>`;
+}
+
+function renderForm() {
+  const chips = draftParticipants.map((p, i) => `
+    <span class="chip">
+      ${esc(p)}
+      <button data-action="rm-participant" data-index="${i}">×</button>
+    </span>`).join('');
+
+  // ── shared: cuántas jornadas tendrá el torneo, calculadas en vivo a partir de los participantes ──
+  const previewRounds = draftParticipants.length >= 2 ? generateRounds(draftParticipants) : [];
+  const previewRoundsCount = previewRounds.length;
+  if (contentType === 'shared') {
+    if (previewRoundsCount > 0 && (!sharedEditingRound || sharedEditingRound > previewRoundsCount)) sharedEditingRound = 1;
+    if (previewRoundsCount === 0) sharedEditingRound = null;
+  }
+
+  const canCreate = draftParticipants.length >= 2 && (
+    contentType === 'shared'
+      ? (sharedContentMode === 'temas'
+          ? previewRoundsCount > 0 && !!draftBuffetData && Array.from({length: previewRoundsCount}, (_,i) => i+1)
+              .every(r => (draftRoundTemas[r] || []).length >= 1)
+          : previewRoundsCount > 0 && Array.from({length: previewRoundsCount}, (_,i) => i+1)
+              .every(r => (draftQuestionsByRound[r] || []).length >= 1))
+      : contentType === 'buffet'
+        ? !!draftBuffetData && draftParticipants.every(p => (draftParticipantTemas[p] || []).length >= 1)
+        : false
+  );
+
+  let contentBlockHtml;
+  if (contentType === 'shared') {
+    const modeTabsHtml = `
+      <div class="form-block">
+        <label>¿Cómo cargás el contenido?</label>
+        <div class="tabs">
+          <button class="tab ${sharedContentMode==='manual'?'active':''}" data-action="shared-content-mode" data-mode="manual">✏️ Preguntas sueltas por jornada</button>
+          <button class="tab ${sharedContentMode==='temas'?'active':''}" data-action="shared-content-mode" data-mode="temas">🍽️ Cargar JSON de temas</button>
+        </div>
+        <p class="hint">${sharedContentMode==='manual'
+          ? 'Escribís o pegás las preguntas de cada jornada a mano.'
+          : 'Subís un JSON con la misma estructura del buffet (temas con preguntas), y elegís qué temas le tocan a cada jornada. Los temas quedan sueltos, sin ligarse a ningún participante: todos responden lo mismo esa jornada.'}</p>
+      </div>`;
+
+    if (sharedContentMode === 'temas') {
+      // ── Temas por jornada: mismo JSON que el buffet, pero asignado a jornadas en vez de a participantes ──
+      const bd = draftBuffetData;
+      const availTemas = bd ? bd.Temas.map(d => d.Tema) : [];
+      const TemaChips = availTemas.map(d => `<span class="chip question-chip">Tema ${d} <span style="color:var(--text-muted);font-size:.72rem">(${(bd.Temas.find(x=>x.Tema===d)?.preguntas||[]).length}p)</span></span>`).join('');
+
+      const roundChips = Array.from({length: previewRoundsCount}, (_, i) => i+1).map(r => {
+        const assigned = draftRoundTemas[r] || [];
+        const active = sharedTemasAssigningRound === r;
+        return `<button class="p-select-chip ${active?'active':''} ${assigned.length===0?'empty':''}" data-action="shared-temas-assign-round" data-round="${r}">Jornada ${r} <span class="count">${assigned.length} tema${assigned.length!==1?'s':''}</span></button>`;
+      }).join('');
+
+      let assignHtml = '';
+      if (sharedTemasAssigningRound && bd) {
+        const assigned = draftRoundTemas[sharedTemasAssigningRound] || [];
+        const TemaToggles = availTemas.map(d => {
+          const on = assigned.some(x => String(x) === String(d));
+          const qCount = (bd.Temas.find(x=>x.Tema===d)?.preguntas||[]).length;
+          return `<button class="p-select-chip ${on?'active':''}" data-action="toggle-round-tema" data-tema="${d}" data-round="${sharedTemasAssigningRound}">Tema ${d} <span class="count">${qCount}p</span></button>`;
+        }).join('');
+        assignHtml = `
+          <div class="pcontent-editor">
+            <span class="pcontent-editor-label">Temas de: Jornada ${sharedTemasAssigningRound}</span>
+            <div class="chip-list">${TemaToggles}</div>
+            <p class="hint">${assigned.length} tema${assigned.length!==1?'s':''} asignado${assigned.length!==1?'s':''} · ${assigned.reduce((s,d)=>{ const Tema=bd.Temas.find(x=>x.Tema===d); return s+(Tema?Tema.preguntas.length:0); },0)} preguntas en total para esta jornada</p>
+            <button class="btn-secondary" data-action="shared-temas-auto-round" data-round="${sharedTemasAssigningRound}" style="height:38px;font-size:.78rem">🎲 Auto-asignar</button>
+          </div>`;
+      }
+
+      contentBlockHtml = `
+        ${modeTabsHtml}
+        <div class="form-block">
+          <label>Contenido de temas (JSON)</label>
+          <div id="buffetUpload" style="display:${draftBuffetData?'none':'flex'};flex-direction:column;gap:8px">
+            <input id="buffetFileInput" type="file" accept=".json" style="color:var(--text-muted);font-size:.88rem">
+            <p class="hint">Sube un archivo JSON con estructura: { "Temas": [{ "Tema": 1, "preguntas": [...] }] }</p>
+          </div>
+          ${bd ? `
+            <div style="background:var(--bg-panel);border:1px solid var(--accent-gold-dim);border-radius:8px;padding:12px 14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <span style="font-size:.88rem;color:var(--accent-gold)">✅ ${bd.Temas.length} temas cargados</span>
+                <button class="btn-secondary" data-action="buffet-clear" style="height:32px;font-size:.72rem;padding:0 10px">Cambiar JSON</button>
+              </div>
+              <div class="chip-list">${TemaChips}</div>
+            </div>
+          ` : ''}
+        </div>
+        ${bd && previewRoundsCount > 0 ? `
+        <div class="form-block">
+          <label>Asignar temas a jornadas</label>
+          ${!previewRoundsCount ? '<p class="hint">Agrega al menos 2 participantes para ver las jornadas del torneo.</p>' : `
+            <div class="chip-list">${roundChips}</div>
+            <p class="hint">Toca una jornada para elegir qué temas le tocan. No se pueden evaluar enfrentamientos de una jornada sin temas asignados.</p>
+            ${assignHtml}
+            <button class="btn-secondary" data-action="shared-temas-auto-all" style="height:42px">🎲 Auto-asignar a todas</button>
+          `}
+        </div>` : (bd ? '<p class="hint">Agrega al menos 2 participantes para ver las jornadas del torneo.</p>' : '')}`;
+
+    } else {
+      // ── Consola de jornadas: cada fecha tiene su propio contenido, igual que buffet pero atado a las jornadas del torneo ──
+      const roundChips = Array.from({length: previewRoundsCount}, (_, i) => i+1).map(r => {
+        const count = (draftQuestionsByRound[r] || []).length;
+        const active = sharedEditingRound === r;
+        return `<button class="p-select-chip ${active?'active':''} ${count===0?'empty':''}" data-action="shared-select-round" data-round="${r}">Jornada ${r} <span class="count">${count}</span></button>`;
+      }).join('');
+
+      let roundEditorHtml = '';
+      if (sharedEditingRound && previewRoundsCount > 0) {
+        const items = draftQuestionsByRound[sharedEditingRound] || [];
+        const rqchips = items.map((q, i) => `
+          <span class="chip question-chip">
+            ${esc(q.text.length > 55 ? q.text.slice(0,55)+'…' : q.text)}
+            <button data-action="rm-question" data-round="${sharedEditingRound}" data-index="${i}">×</button>
+          </span>`).join('');
+
+        roundEditorHtml = `
+          <div class="pcontent-editor">
+            <span class="pcontent-editor-label">Preguntas de la Jornada ${sharedEditingRound}</span>
+            <div class="tabs">
+              <button class="tab ${questionInputMode==='manual'?'active':''}" data-action="mode-q" data-mode="manual">✏️ Una por una</button>
+              <button class="tab ${questionInputMode==='bulk'?'active':''}" data-action="mode-q" data-mode="bulk">📋 Varias a la vez</button>
+            </div>
+            <div id="qManual" style="display:${questionInputMode==='manual'?'flex':'none'};gap:8px">
+              <input id="questionInput" type="text" placeholder="Pregunta para la Jornada ${sharedEditingRound}…" style="flex:1">
+              <button class="btn-secondary" data-action="add-question">Agregar</button>
+            </div>
+            <div id="qBulk" class="import-area ${questionInputMode==='bulk'?'visible':''}">
+              <textarea id="qBulkInput" placeholder="Una pregunta por línea:&#10;¿Cuál es la capital de Francia?&#10;¿En qué año fue la Revolución Francesa?"></textarea>
+              <button class="btn-secondary" data-action="import-questions">Importar preguntas</button>
+              <p id="qFeedback" class="import-feedback"></p>
+            </div>
+            <div class="chip-list">${rqchips || '<p class="hint">Sin preguntas aún para esta jornada.</p>'}</div>
+          </div>`;
+      }
+
+      contentBlockHtml = `
+        ${modeTabsHtml}
+        <!-- Preguntas por jornada (consola de fechas) -->
+        <div class="form-block">
+          <label>Contenido por jornada</label>
+          ${previewRoundsCount === 0
+            ? '<p class="hint">Agrega al menos 2 participantes para ver las jornadas del torneo.</p>'
+            : `
+              <div class="chip-list">${roundChips}</div>
+              <p class="hint">Toca una jornada para definir sus propias preguntas. Cada jornada necesita al menos 1.</p>
+              ${roundEditorHtml}
+            `}
+        </div>`;
+    }
+  } else {
+    // ── Buffet mode ──
+    const bd = draftBuffetData;
+    const availTemas = bd ? bd.Temas.map(d => d.Tema) : [];
+    const TemaChips = availTemas.map(d => `<span class="chip question-chip">Tema ${d} <span style="color:var(--text-muted);font-size:.72rem">(${(bd.Temas.find(x=>x.Tema===d)?.preguntas||[]).length}p)</span></span>`).join('');
+
+    const participantChips = draftParticipants.map(p => {
+      const assigned = draftParticipantTemas[p] || [];
+      const active = buffetAssigningParticipant === p;
+      return `<button class="p-select-chip ${active?'active':''} ${assigned.length===0?'empty':''}" data-action="buffet-assign" data-name="${esc(p)}">${esc(p)} <span class="count">${assigned.length} tema${assigned.length!==1?'s':''}</span></button>`;
+    }).join('');
+
+    let assignHtml = '';
+    if (buffetAssigningParticipant && draftParticipants.includes(buffetAssigningParticipant) && bd) {
+      const assigned = draftParticipantTemas[buffetAssigningParticipant] || [];
+      const TemaToggles = availTemas.map(d => {
+        const on = assigned.some(x => String(x) === String(d));
+        const qCount = (bd.Temas.find(x=>x.Tema===d)?.preguntas||[]).length;
+        return `<button class="p-select-chip ${on?'active':''}" data-action="toggle-Tema" data-tema="${d}" data-name="${esc(buffetAssigningParticipant)}">Tema ${d} <span class="count">${qCount}p</span></button>`;
+      }).join('');
+      assignHtml = `
+        <div class="pcontent-editor">
+          <span class="pcontent-editor-label">Temas de: ${esc(buffetAssigningParticipant)}</span>
+          <div class="chip-list">${TemaToggles}</div>
+          <p class="hint">${assigned.length} tema${assigned.length!==1?'s':''} asignado${assigned.length!==1?'s':''} · ${assigned.reduce((s,d)=>{ const Tema=bd.Temas.find(x=>x.Tema===d); return s+(Tema?Tema.preguntas.length:0); },0)} preguntas en total</p>
+          <div style="display:flex;gap:8px">
+            <button class="btn-secondary" data-action="buffet-auto" data-name="${esc(buffetAssigningParticipant)}" style="height:38px;font-size:.78rem">🎲 Auto-asignar</button>
+          </div>
+        </div>`;
+    }
+
+    contentBlockHtml = `
+      <!-- Buffet: cuántas preguntas por tema en cada jornada -->
+      <div class="form-block">
+        <label>Preguntas por tema y jornada</label>
+        <div class="tabs">
+          ${[1,2,3].map(n => `<button class="tab ${draftQuestionsPerTema===n?'active':''}" data-action="set-questions-per-tema" data-n="${n}">${n} pregunta${n>1?'s':''}</button>`).join('')}
+        </div>
+        <p class="hint">En cada jornada, a cada participante le van a salir ${draftQuestionsPerTema} pregunta${draftQuestionsPerTema>1?'s':''} de cada tema que tenga asignado.</p>
+      </div>
+
+      <!-- Buffet: carga JSON y asigna temas -->
+      <div class="form-block">
+        <label>Contenido buffet (JSON)</label>
+        <div id="buffetUpload" style="display:${draftBuffetData?'none':'flex'};flex-direction:column;gap:8px">
+          <input id="buffetFileInput" type="file" accept=".json" style="color:var(--text-muted);font-size:.88rem">
+          <p class="hint">Sube un archivo JSON con estructura: { "Temas": [{ "Tema": 1, "preguntas": [...] }] }</p>
+        </div>
+        ${bd ? `
+          <div style="background:var(--bg-panel);border:1px solid var(--accent-gold-dim);border-radius:8px;padding:12px 14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:.88rem;color:var(--accent-gold)">✅ ${bd.Temas.length} temas cargados</span>
+              <button class="btn-secondary" data-action="buffet-clear" style="height:32px;font-size:.72rem;padding:0 10px">Cambiar JSON</button>
+            </div>
+            <div class="chip-list">${TemaChips}</div>
+          </div>
+        ` : ''}
+      </div>
+
+      ${bd && draftParticipants.length > 0 ? `
+      <div class="form-block">
+        <label>Asignar temas a participantes</label>
+        <div class="chip-list">${participantChips}</div>
+        <p class="hint">Toca un participante para asignarle temas. Pueden compartir temas.</p>
+        ${assignHtml}
+        <button class="btn-secondary" data-action="buffet-auto-all" style="height:42px">🎲 Auto-asignar a todos</button>
+      </div>` : ''}`;
+  }
+
+  document.getElementById('app').innerHTML = `
+    <div class="page">
+      <button class="back-link" data-action="home">← Torneos</button>
+      <header class="page-header">
+        <span class="eyebrow">Nuevo</span><h1>Crear torneo</h1>
+      </header>
+
+      <!-- Nombre -->
+      <div class="form-block">
+        <label for="tournamentNameInput">Nombre del torneo</label>
+        <input id="tournamentNameInput" type="text" placeholder="Ej. Evaluación de Historia" value="${esc(draftName)}">
+      </div>
+
+      <!-- Participantes -->
+      <div class="form-block">
+        <label>Participantes</label>
+        <div class="tabs">
+          <button class="tab ${inputMode==='manual'?'active':''}" data-action="mode-p" data-mode="manual">✏️ Uno por uno</button>
+          <button class="tab ${inputMode==='json'?'active':''}" data-action="mode-p" data-mode="json">📋 Importar lista</button>
+        </div>
+        <div id="pManual" style="display:${inputMode==='manual'?'flex':'none'};gap:8px">
+          <input id="participantInput" type="text" placeholder="Nombre del participante" style="flex:1">
+          <button class="btn-secondary" data-action="add-participant">Agregar</button>
+        </div>
+        <div id="pJson" class="import-area ${inputMode==='json'?'visible':''}">
+          <textarea id="pJsonInput" placeholder='["Ana","Pedro","Luis"] o una línea por nombre'></textarea>
+          <button class="btn-secondary" data-action="import-participants">Importar</button>
+          <p id="pFeedback" class="import-feedback"></p>
+        </div>
+        <div class="chip-list">${chips || '<p class="hint">Sin participantes aún.</p>'}</div>
+        <p class="hint">${draftParticipants.length} participante${draftParticipants.length===1?'':'s'}${draftParticipants.length<2?' · mínimo 2':''}</p>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Tipo de contenido -->
+      <div class="form-block">
+        <label>Tipo de contenido</label>
+        <div class="tabs">
+          <button class="tab ${contentType==='shared'?'active':''}" data-action="content-type" data-type="shared">🌐 Mismo para todos</button>
+          <button class="tab ${contentType==='buffet'?'active':''}" data-action="content-type" data-type="buffet">🍽️ Buffet por temas</button>
+        </div>
+        <p class="hint">${contentType==='shared'
+          ? 'Todos los participantes responden las mismas preguntas, pero podés definir un contenido distinto para cada jornada (escrito a mano o cargando un JSON de temas).'
+          : 'Carga un JSON con temas de estudio y asigna temas específicos a cada participante. Pueden compartir temas.'}</p>
+      </div>
+
+      ${contentBlockHtml}
+
+      <hr class="divider">
+
+      <div class="form-block">
+        <label class="hide-results-toggle" data-action="toggle-hide-results-draft">
+          <input type="checkbox" ${draftHideResults ? 'checked' : ''} style="pointer-events:none">
+          <span>🔒 Ocultar resultados durante el juego</span>
+        </label>
+        <p class="hint">La tabla de posiciones y los marcadores en vivo quedan ocultos (con opción de revelarlos manualmente). Podés cambiar esto después.</p>
+      </div>
+
+      <button class="btn-primary" data-action="create" ${canCreate?'':'disabled'}>
+        Crear torneo y generar jornadas
+      </button>
+    </div>`;
+
+  if (inputMode === 'manual' && contentType==='shared') document.getElementById('participantInput')?.focus();
+}
+
+function renderParticipantContentEditor(name) {
+  const items = draftParticipantContent[name] || [];
+  const ichips = items.map((q, i) => `
+    <span class="chip question-chip">
+      ${esc(q.text.length > 55 ? q.text.slice(0,55)+'…' : q.text)}
+      <button data-action="rm-pcontent" data-name="${esc(name)}" data-index="${i}">×</button>
+    </span>`).join('');
+
+  return `
+    <div class="pcontent-editor">
+      <span class="pcontent-editor-label">Editando contenido de: ${esc(name)}</span>
+      <div class="tabs">
+        <button class="tab ${pcInputMode==='manual'?'active':''}" data-action="pc-mode" data-mode="manual">✏️ Uno por uno</button>
+        <button class="tab ${pcInputMode==='bulk'?'active':''}" data-action="pc-mode" data-mode="bulk">📋 Varios a la vez</button>
+      </div>
+      <div style="display:${pcInputMode==='manual'?'flex':'none'};gap:8px">
+        <input id="pcInput" type="text" placeholder="Contenido o pregunta para ${esc(name)}…" style="flex:1">
+        <button class="btn-secondary" data-action="add-pcontent" data-name="${esc(name)}">Agregar</button>
+      </div>
+      <div class="import-area ${pcInputMode==='bulk'?'visible':''}">
+        <textarea id="pcBulkInput" placeholder="Un elemento por línea"></textarea>
+        <button class="btn-secondary" data-action="import-pcontent" data-name="${esc(name)}">Importar</button>
+        <p id="pcFeedback" class="import-feedback"></p>
+      </div>
+      <div class="chip-list">${ichips || '<p class="hint">Sin contenido aún.</p>'}</div>
+    </div>`;
+}
+
+// ── estadísticas completas de un torneo (compartidas entre la tabla en pantalla
+// y el generador de certificados) ──
+// Incluye tanto enfrentamientos ya cerrados (m.result) como enfrentamientos
+// en curso con progreso autoguardado (m.progress): estos últimos aportan un
+// marcador provisional a la tabla, para que se vea "cómo van" sin esperar a
+// que se concluya el enfrentamiento ni la jornada completa. Se marca a los
+// participantes involucrados con `live: true` para poder distinguirlos.
+function computeFullStats(t) {
+  const stat = {};
+  const bonus = t.bonusPoints || {};
+  const pctHistory = {}; // % de acierto por jornada jugada (dato real: aciertos/preguntas de esa jornada)
+  t.participants.forEach(p => { stat[p] = { v:0, e:0, d:0, pts:0, score:0, asist:0, live:false }; pctHistory[p] = []; });
+
+  // Extrae aciertos/preguntas REALES de un enfrentamiento para un lado ('home'|'away'),
+  // usando el detalle pregunta por pregunta que ya guarda la app al evaluar
+  // (m.result.questionScores para enfrentamientos cerrados, m.progress.turnData
+  // para los que están en curso). No depende de configuración actual ni de
+  // suposiciones: es exactamente lo que pasó en esa jornada.
+  const matchQuestionStats = (m, side) => {
+    const qKey = side === 'home' ? 'homeQ' : 'awayQ';
+    const cKey = side === 'home' ? 'homeC' : 'awayC';
+    let asked = 0, correct = 0;
+    if (m.result && Array.isArray(m.result.questionScores)) {
+      m.result.questionScores.forEach(s => {
+        if (s[qKey]) { asked++; if (s[cKey] === true) correct++; }
+      });
+    } else if (!m.result && m.progress && Array.isArray(m.progress.turnData)) {
+      m.progress.turnData.forEach(td => {
+        const entry = td?.[side];
+        if (entry?.question) { asked++; if (entry.correct === true) correct++; }
+      });
+    }
+    return { asked, correct };
+  };
+  const trackJornadaPct = (p, asked, correct) => {
+    if (asked > 0) pctHistory[p].push(correct / asked);
+  };
+
+  // jornadas "completadas" = todas sus enfrentamientos tienen resultado.
+  // Se usan como base para exigir un mínimo de participación real (>40%)
+  // antes de dejar que alguien aparezca en el Ratio.
+  const roundsCompleted = t.rounds.filter(r => r.length > 0 && r.every(m => m.result)).length;
+  const jornadasPlayed = {}; // cuántas jornadas completadas jugó cada participante
+  t.participants.forEach(p => { jornadasPlayed[p] = 0; });
+
+  t.rounds.forEach(round => {
+    const isComplete = round.length > 0 && round.every(m => m.result);
+    if (isComplete) {
+      const playedThisRound = new Set();
+      round.forEach(m => { playedThisRound.add(m.home); playedThisRound.add(m.away); });
+      playedThisRound.forEach(p => { if (jornadasPlayed[p] !== undefined) jornadasPlayed[p]++; });
+    }
+    round.forEach(m => {
+      if (m.result) {
+        applyScoreToStat(stat, m.home, m.away, m.result.homeScore, m.result.awayScore);
+        const hs = matchQuestionStats(m, 'home'), as_ = matchQuestionStats(m, 'away');
+        trackJornadaPct(m.home, hs.asked, hs.correct);
+        trackJornadaPct(m.away, as_.asked, as_.correct);
+        return;
+      }
+      const partial = partialScore(m);
+      if (partial) {
+        applyScoreToStat(stat, m.home, m.away, partial.home, partial.away);
+        stat[m.home].live = true;
+        stat[m.away].live = true;
+        const hs = matchQuestionStats(m, 'home'), as_ = matchQuestionStats(m, 'away');
+        trackJornadaPct(m.home, hs.asked, hs.correct);
+        trackJornadaPct(m.away, as_.asked, as_.correct);
+      }
+    });
+  });
+
+  const hasLive = t.participants.some(p => stat[p].live);
+  const hasBonus = t.participants.some(p => (bonus[p] || 0) > 0);
+  const total = p => stat[p].pts + (bonus[p] || 0);
+  // participaciones = enfrentamientos jugados (ganados + empatados + perdidos)
+  const partic = p => stat[p].v + stat[p].e + stat[p].d;
+  // Ratio = media del % de acierto real por jornada (aciertos ÷ preguntas de esa
+  // jornada, tal como quedaron registradas al evaluar), sin contar las jornadas
+  // en las que el % dio 0. null cuando no hay ninguna jornada con detalle de
+  // preguntas para promediar (torneos viejos sin questionScores, por ejemplo).
+  const ratioPct = p => {
+    const vals = (pctHistory[p] || []).filter(v => v > 0);
+    if (vals.length === 0) return null;
+    return vals.reduce((s, v) => s + v, 0) / vals.length;
+  };
+  // fallback: promedio simple de puntaje por participación
+  const ratio = p => {
+    const pct = ratioPct(p);
+    if (pct !== null) return pct;
+    return partic(p) > 0 ? stat[p].score / partic(p) : 0;
+  };
+  // elegibilidad para el Ratio: haber jugado en más del 40% de las jornadas
+  // ya completadas del torneo (evita que alguien con 1 sola jornada jugada
+  // aparezca arriba en la tabla por una racha puntual).
+  const ratioEligible = p => roundsCompleted > 0 && (jornadasPlayed[p] / roundsCompleted) > 0.4;
+
+  return { stat, bonus, pctHistory, hasLive, hasBonus, total, partic, ratioPct, ratio, roundsCompleted, jornadasPlayed, ratioEligible };
+}
+
+// ── clasificación por equipos (clubes e iglesias) ──
+// Cada participante suma su total (Pts + Extra) a su club y a su iglesia, tomados de
+// t.apiTeams (se trae al sincronizar con el worker). Sin club / sin iglesia = no suma a ninguno.
+function buildTeamStandings(t, stat, bonus, total) {
+  const teams = t.apiTeams || {};
+  const groups = { club: new Map(), iglesia: new Map() };
+  t.participants.forEach(p => {
+    const info = teams[p];
+    if (!info) return;
+    ['club', 'iglesia'].forEach(tipo => {
+      const nombre = info[tipo];
+      if (!nombre) return;
+      const g = groups[tipo].get(nombre) || { nombre, miembros: 0, pts: 0, bonus: 0, total: 0, live: false };
+      g.miembros++;
+      g.pts += stat[p].pts;
+      g.bonus += bonus[p] || 0;
+      g.total += total(p);
+      g.live = g.live || !!stat[p].live;
+      groups[tipo].set(nombre, g);
+    });
+  });
+  const avg = g => g.total / g.miembros;
+  const cmp = (a, b) => teamSortBy === 'avg'
+    ? (avg(b) - avg(a)) || (b.total - a.total) || a.nombre.localeCompare(b.nombre, 'es')
+    : (b.total - a.total) || (avg(b) - avg(a)) || a.nombre.localeCompare(b.nombre, 'es');
+  return { club: [...groups.club.values()].sort(cmp), iglesia: [...groups.iglesia.values()].sort(cmp) };
+}
+
+function teamTableHtml(titulo, etiqueta, rows) {
+  if (!rows.length) return '';
+  const hasExtra = rows.some(g => g.bonus > 0);
+  const col = key => key === teamSortBy ? 'sort-active' : '';
+  const arr = key => key === teamSortBy ? ' <span class="sort-arrow">▼</span>' : '';
+  const fmt = n => (Math.round(n * 10) / 10).toString();
+  return `
+    <h2 class="section-title">${titulo}</h2>
+    <div style="background:var(--bg-panel);border:1px solid var(--accent-gold-dim);border-radius:var(--radius);overflow:auto">
+      <table class="standings-table">
+        <thead><tr>
+          <th>#</th><th style="text-align:left">${etiqueta}</th><th>Miembros</th><th>Pts</th>
+          ${hasExtra ? '<th>Extra</th>' : ''}
+          <th class="${col('total')}" data-action="team-sort" data-key="total">Total${arr('total')}</th>
+          <th class="${col('avg')}" data-action="team-sort" data-key="avg" title="Total ÷ miembros inscritos">Promedio${arr('avg')}</th>
+        </tr></thead>
+        <tbody>${rows.map((g, i) => `
+          <tr class="${g.live ? 'live-row' : ''}">
+            <td class="rank">${i + 1}</td>
+            <td>${esc(g.nombre)}${g.live ? ' <span class="live-dot" title="Incluye un enfrentamiento en curso, resultado provisional">🔴</span>' : ''}</td>
+            <td style="color:var(--text-muted)">${g.miembros}</td>
+            <td class="pts">${g.pts}</td>
+            ${hasExtra ? `<td style="color:var(--accent-gold);font-family:'Oswald',sans-serif;font-weight:600">+${g.bonus}</td>` : ''}
+            <td class="pts${teamSortBy === 'total' ? ' sort-col' : ''}">${g.total}</td>
+            <td${teamSortBy === 'avg' ? ' class="sort-col"' : ''} style="color:var(--text-muted)">${fmt(g.total / g.miembros)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderDetail() {
+  const t = getTournament(activeTid);
+  if (!t) { view='home'; render(); return; }
+
+  const { stat, bonus, hasLive, hasBonus, total, partic, ratioPct, ratio, ratioEligible } = computeFullStats(t);
+
+  // ── Ordenar según sortBy ──
+  const sorters = {
+    total:  (a,b) => total(b)-total(a)  || stat[b].score-stat[a].score,
+    pts:    (a,b) => stat[b].pts-stat[a].pts  || stat[b].score-stat[a].score,
+    wins:   (a,b) => stat[b].v-stat[a].v     || stat[b].pts-stat[a].pts,
+    draws:  (a,b) => stat[b].e-stat[a].e     || stat[b].pts-stat[a].pts,
+    score:  (a,b) => stat[b].score-stat[a].score || stat[b].pts-stat[a].pts,
+    bonus:  (a,b) => (bonus[b]||0)-(bonus[a]||0) || stat[b].pts-stat[a].pts,
+    ratio:  (a,b) => (ratioEligible(b)-ratioEligible(a)) || (ratio(b)-ratio(a)) || (stat[b].score-stat[a].score),
+    asist:  (a,b) => (stat[b].asist||0)-(stat[a].asist||0) || stat[b].pts-stat[a].pts,
+  };
+  const ranking = [...t.participants].sort(sorters[sortBy] || sorters.total);
+
+  // ── Construir tabla ──
+  const col = key => key === sortBy ? 'sort-active' : '';
+  const arr = key => key === sortBy ? ' <span class="sort-arrow">▼</span>' : '';
+
+  const standingsHead = `<tr>
+    <th>#</th>
+    <th style="text-align:left">Participante</th>
+    <th class="${col('wins')}"    data-action="sort-by" data-key="wins">V${arr('wins')}</th>
+    <th class="${col('draws')}"   data-action="sort-by" data-key="draws">E${arr('draws')}</th>
+    <th>D</th>
+    <th class="${col('pts')}"     data-action="sort-by" data-key="pts">Pts${arr('pts')}</th>
+    <th class="${col('score')}"   data-action="sort-by" data-key="score">Puntaje${arr('score')}</th>
+    <th class="${col('ratio')}"   data-action="sort-by" data-key="ratio" title="Media del % de acierto real por jornada (aciertos/preguntas registradas al evaluar), sin contar jornadas en 0%. Solo aplica a quienes jugaron más del 40% de las jornadas completadas">Ratio${arr('ratio')}</th>
+    <th class="${col('asist')}"   data-action="sort-by" data-key="asist" title="Cantidad de enfrentamientos en los que sumó más de 0 puntos">Asist${arr('asist')}</th>
+    ${hasBonus ? `<th class="${col('bonus')}" data-action="sort-by" data-key="bonus">Extra${arr('bonus')}</th>` : ''}
+    <th class="${col('total')}"   data-action="sort-by" data-key="total">Total${arr('total')}</th>
+  </tr>`;
+
+  const sc = key => sortBy === key ? ' class="sort-col"' : '';
+  const standingsRows = ranking.map((p, i) => `
+    <tr class="${stat[p].live ? 'live-row' : ''}">
+      <td class="rank">${i+1}</td>
+      <td>${esc(p)}${stat[p].live ? ' <span class="live-dot" title="Incluye un enfrentamiento en curso, resultado provisional">🔴</span>' : ''}</td>
+      <td${sc('wins')}   style="color:var(--accent-green)">${stat[p].v}</td>
+      <td${sc('draws')}  style="color:var(--accent-gold)">${stat[p].e}</td>
+      <td style="color:var(--accent-red)">${stat[p].d}</td>
+      <td${sc('pts')}    class="pts">${stat[p].pts}</td>
+      <td${sc('score')}  style="color:var(--text-muted)">${fmtScore(stat[p].score)}</td>
+      <td${sc('ratio')}  style="color:var(--text-muted)" title="${ratioEligible(p) ? '' : 'No elegible: debe haber jugado más del 40% de las jornadas completadas'}">${ratioEligible(p) ? (ratioPct(p) !== null ? (ratioPct(p)*100).toFixed(1)+'%' : (partic(p) > 0 ? ratio(p).toFixed(2) : '—')) : '—'}</td>
+      <td${sc('asist')}  style="color:var(--text-muted)">${stat[p].asist||0}</td>
+      ${hasBonus ? `<td${sc('bonus')} style="color:var(--accent-gold);font-family:'Oswald',sans-serif;font-weight:600">+${bonus[p]||0}</td>` : ''}
+      <td${sc('total')}  class="pts">${total(p)}</td>
+    </tr>`).join('');
+
+  // ── Jornadas + Ronda Extra integrada ──
+  const jornadasHtml = t.rounds.map((round, i) => {
+    const done = round.filter(m => m.result).length;
+    const inProg = round.filter(m => !m.result && m.progress).length;
+    const total = round.length;
+    const badge = done === total
+      ? `<span class="badge-done">✓ Completa</span>`
+      : inProg > 0
+        ? `<span class="badge-pending">${done}/${total} evaluados · ${inProg} en curso</span>`
+        : `<span class="badge-pending">${done}/${total} evaluados</span>`;
+    return `
+      <div class="jornada-card" data-action="open-round" data-round="${i}">
+        <div class="jornada-num-block">
+          <span class="jornada-label">Jornada</span>
+          <span class="jornada-number">${i+1}</span>
+        </div>
+        <div class="jornada-meta">
+          <span>${total} enfrentamiento${total===1?'':'s'}</span>
+          ${badge}
+          <span class="chevron">→</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Ronda extra: cantidad de participantes con bonus asignado (visitados)
+  const bonusAssigned = t.participants.filter(p => (bonus[p] || 0) > 0).length;
+  const bonusBadge = bonusAssigned > 0
+    ? `<span class="badge-done">✓ ${bonusAssigned}/${t.participants.length} con puntos</span>`
+    : `<span class="badge-pending">Sin asignar</span>`;
+
+  const extraRoundCard = `
+    <div class="jornada-card" style="border-color:rgba(216,168,78,.5)" data-action="open-bonus">
+      <div class="jornada-num-block">
+        <span class="jornada-label" style="color:var(--accent-gold)">Ronda</span>
+        <span class="jornada-number" style="color:var(--accent-gold)">★</span>
+      </div>
+      <div class="jornada-meta">
+        <span style="color:var(--accent-gold)">Ronda extra · ${t.participants.length} participantes</span>
+        ${bonusBadge}
+        <span class="chevron">→</span>
+      </div>
+    </div>`;
+
+  const standingsHidden = t.hideResults && !standingsRevealed;
+  const standingsBlock = standingsHidden
+    ? `
+        <div class="hidden-results-panel">
+          <span class="lock-icon">🔒</span>
+          <span class="lock-text">Los resultados están ocultos para mantener el suspenso.</span>
+          <button class="btn-secondary" data-action="toggle-standings-reveal">👁 Revelar tabla</button>
+        </div>`
+    : `
+        <div style="background:var(--bg-panel);border:1px solid var(--accent-gold-dim);border-radius:var(--radius);overflow:auto">
+          <table class="standings-table">
+            <thead>${standingsHead}</thead>
+            <tbody>${standingsRows}</tbody>
+          </table>
+        </div>
+        ${hasLive ? `<p class="live-legend">🔴 Incluye enfrentamientos en curso: puntaje provisional según lo evaluado hasta ahora, puede cambiar hasta que se cierren.</p>` : ''}
+        ${t.hideResults ? `<button class="btn-outline" data-action="toggle-standings-reveal" style="align-self:center;margin-top:8px">🙈 Ocultar de nuevo</button>` : ''}`;
+
+  // ── Clasificación por clubes e iglesias (misma regla de oculto que la individual) ──
+  let teamsBlock = '';
+  if (!standingsHidden) {
+    const teamStandings = buildTeamStandings(t, stat, bonus, total);
+    teamsBlock = teamTableHtml('Clasificación por clubes', 'Club', teamStandings.club)
+               + teamTableHtml('Clasificación por iglesias', 'Iglesia', teamStandings.iglesia);
+    if (!teamsBlock && t.competenciaId && !t.apiTeams) {
+      teamsBlock = `<p class="hint">Para ver la clasificación por clubes e iglesias pulsa «Sincronizar torneos» en la pantalla principal.</p>`;
+    }
+  }
+
+  document.getElementById('app').innerHTML = `
+    <div class="page">
+      <button class="back-link" data-action="home">← Torneos</button>
+      <header class="page-header">
+        <span class="eyebrow">${t.participants.length} participantes · ${t.contentType === 'individual' ? 'contenido individual por participante' : t.contentType === 'buffet' ? `buffet · ${(t.buffetData?.Temas||[]).length} temas` : sharedContentSummary(t)}</span>
+        <h1>${esc(t.name)}</h1>
+      </header>
+
+      ${t.competenciaId ? `<p class="hint">Torneo del worker: participantes, temas y preguntas se gestionan allí. Usa «Sincronizar torneos» en la pantalla principal para traer cambios.</p>` : `<button class="btn-secondary" data-action="add-participants-open" style="align-self:flex-start">➕ Agregar participantes</button>`}
+      ${!t.competenciaId && t.contentType === 'buffet' ? `
+        <button class="btn-secondary" data-action="buffet-edit-open" style="align-self:flex-start">✎ Editar contenido buffet</button>
+        <div class="form-block">
+          <label>Preguntas por tema y jornada</label>
+          <div class="tabs">
+            ${[1,2,3].map(n => `<button class="tab ${(t.questionsPerTema||3)===n?'active':''}" data-action="set-tournament-questions-per-tema" data-n="${n}">${n} pregunta${n>1?'s':''}</button>`).join('')}
+          </div>
+          <p class="hint">Se aplica desde la próxima jornada que se juegue (las ya evaluadas no cambian).</p>
+        </div>
+      ` : ''}
+      ${!t.competenciaId && t.contentType === 'shared' && t.buffetData && t.roundTemas ? `
+        <button class="btn-secondary" data-action="buffet-edit-open" style="align-self:flex-start">✎ Editar preguntas de los temas</button>
+        <button class="btn-secondary" data-action="round-temas-edit-open" style="align-self:flex-start">✎ Asignar temas por jornada</button>
+      ` : ''}
+      ${!t.competenciaId && t.contentType === 'shared' && !(t.buffetData && t.roundTemas) ? `
+        <button class="btn-secondary" data-action="shared-edit-open" style="align-self:flex-start">✎ Editar contenido por jornada</button>
+      ` : ''}
+      <label class="hide-results-toggle" data-action="toggle-hide-results" style="align-self:flex-start">
+        <input type="checkbox" ${t.hideResults ? 'checked' : ''} style="pointer-events:none">
+        <span>🔒 Ocultar resultados durante el juego</span>
+      </label>
+
+      <section>
+        <h2 class="section-title">Clasificación <span style="font-size:.7rem;color:var(--text-muted);letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif">· toca una columna para ordenar</span></h2>
+        ${standingsBlock}
+        ${teamsBlock}
+        ${!standingsHidden ? `<button class="btn-secondary" data-action="generate-ranking-image" style="align-self:flex-start;margin-top:10px">🏆 Generar imagen del Top 5</button>` : ''}
+        ${!standingsHidden ? `<button class="btn-secondary" data-action="progress-open" style="align-self:flex-start;margin-top:8px">📈 Ver progreso por jornada</button>` : ''}
+        <button class="btn-secondary" data-action="real-names-edit-open" style="align-self:flex-start;margin-top:8px">🪪 Nombres reales (certificados)</button>
+        ${!standingsHidden ? `<button class="btn-secondary" data-action="generate-certificates-pdf" style="align-self:flex-start;margin-top:8px">📜 Generar certificados (PDF)</button>` : ''}
+      </section>
+
+      <section>
+        <h2 class="section-title">Jornadas</h2>
+        <div class="jornada-list">
+          ${jornadasHtml}
+          ${extraRoundCard}
+        </div>
+      </section>
+    </div>
+    ${rankingImageDataUrl ? `
+      <div class="ranking-image-overlay">
+        <div class="ranking-image-box">
+          <img src="${rankingImageDataUrl}" alt="Top 5 — ${esc(t.name)}">
+          <div class="ranking-image-actions">
+            <a class="btn-secondary" href="${rankingImageDataUrl}" download="${rankingImageFilename}">⬇ Descargar imagen</a>
+            <button class="btn-outline" data-action="close-ranking-image">Cerrar</button>
+          </div>
+        </div>
+      </div>` : ''}`;
+}
+
+
+// ════════════════════════════════════════════════════════════
+//  PROGRESO POR JORNADA — gráfica de líneas (x = jornada, y = puntos / puntaje / % acierto)
+// ════════════════════════════════════════════════════════════
+const PG_PALETTE = ['#D8A84E','#4EA87A','#5B9BD5','#C75450','#B084CC','#E28A4D','#4FC1C1','#E06FA0','#A3C755','#8FA6E8'];
+const PG_METRICS = { pts: 'Puntos', score: 'Puntaje', pct: '% acierto' };
+
+function progressColor(t, name) {
+  const i = Math.max(0, t.participants.indexOf(name));
+  return i < PG_PALETTE.length ? PG_PALETTE[i] : `hsl(${Math.round((i * 137.508) % 360)}, 62%, 62%)`;
+}
+
+// Aciertos/preguntas reales de un lado de un enfrentamiento (cerrado o en curso).
+function progressQuestionStats(m, side) {
+  const qKey = side === 'home' ? 'homeQ' : 'awayQ';
+  const cKey = side === 'home' ? 'homeC' : 'awayC';
+  let asked = 0, correct = 0;
+  if (m.result && Array.isArray(m.result.questionScores)) {
+    m.result.questionScores.forEach(s => { if (s[qKey]) { asked++; if (s[cKey] === true) correct++; } });
+  } else if (!m.result && m.progress && Array.isArray(m.progress.turnData)) {
+    m.progress.turnData.forEach(td => {
+      const e = td?.[side];
+      if (e?.question) { asked++; if (e.correct === true) correct++; }
+    });
+  }
+  return { asked, correct };
+}
+
+// Serie por jornada para cada participante, con las MISMAS reglas de puntaje que la tabla
+// (applyScoreToStat), incluyendo enfrentamientos en curso con marcador parcial.
+// cum = acumulado hasta esa jornada · rnd = solo lo que hizo en esa jornada (null si no jugó).
+function computeProgressSeries(t) {
+  let last = -1;
+  t.rounds.forEach((r, i) => { if (r.some(m => m.result || partialScore(m))) last = i; });
+  const n = last + 1;
+  const r1 = x => Math.round(x * 10) / 10;
+  const byP = {}, run = {};
+  t.participants.forEach(p => {
+    byP[p] = { cum: { pts: [], score: [], pct: [] }, rnd: { pts: [], score: [], pct: [] } };
+    run[p] = { pts: 0, score: 0, asked: 0, correct: 0 };
+  });
+
+  for (let i = 0; i < n; i++) {
+    const tmp = {}, asked = {}, corr = {}, played = new Set();
+    t.participants.forEach(p => { tmp[p] = { v:0, e:0, d:0, pts:0, score:0, asist:0 }; asked[p] = 0; corr[p] = 0; });
+    t.rounds[i].forEach(m => {
+      let hs, as_;
+      if (m.result) { hs = m.result.homeScore || 0; as_ = m.result.awayScore || 0; }
+      else {
+        const pr = partialScore(m);
+        if (!pr) return;
+        hs = pr.home; as_ = pr.away;
+      }
+      if (!tmp[m.home] || !tmp[m.away]) return;
+      applyScoreToStat(tmp, m.home, m.away, hs, as_);
+      played.add(m.home); played.add(m.away);
+      [['home', m.home], ['away', m.away]].forEach(([side, name]) => {
+        const q = progressQuestionStats(m, side);
+        asked[name] += q.asked; corr[name] += q.correct;
+      });
+    });
+    t.participants.forEach(p => {
+      const r = run[p], did = played.has(p);
+      r.pts += tmp[p].pts; r.score += tmp[p].score; r.asked += asked[p]; r.correct += corr[p];
+      byP[p].cum.pts.push(r.pts);
+      byP[p].cum.score.push(r1(r.score));
+      byP[p].cum.pct.push(r.asked > 0 ? r.correct / r.asked : null);
+      byP[p].rnd.pts.push(did ? tmp[p].pts : null);
+      byP[p].rnd.score.push(did ? r1(tmp[p].score) : null);
+      byP[p].rnd.pct.push(asked[p] > 0 ? corr[p] / asked[p] : null);
+    });
+  }
+  return { n, byP };
+}
+
+function progressValue(series, p, i) {
+  return series.byP[p][progressMode === 'cum' ? 'cum' : 'rnd'][progressMetric][i];
+}
+function fmtProgress(v) {
+  if (v === null || v === undefined) return '—';
+  return progressMetric === 'pct' ? (v * 100).toFixed(1) + '%' : fmtScore(v);
+}
+function fmtTick(v) {
+  if (progressMetric === 'pct') return Math.round(v * 100) + '%';
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+}
+function niceScale(max) {
+  if (max <= 0) return { max: 1, step: 0.25 };
+  const rough = max / 4;
+  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const norm = rough / mag;
+  const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+  return { max: Math.ceil(max / step - 1e-9) * step, step };
+}
+
+function progressReadoutHtml() {
+  if (!progressCache) return '';
+  const { t, series } = progressCache;
+  const n = series.n;
+  const f = progressFocus == null ? n - 1 : Math.min(progressFocus, n - 1);
+  const rows = t.participants.filter(p => progressSelected.has(p))
+    .map(p => ({ p, v: progressValue(series, p, f) }))
+    .sort((a, b) => (b.v ?? -1) - (a.v ?? -1));
+  const what = `${PG_METRICS[progressMetric]} · ${progressMode === 'cum' ? 'acumulado' : 'solo esta jornada'}`;
+  if (!rows.length) return `<div class="pg-readout-title">Jornada ${f + 1}</div><p class="hint">Elegí al menos un participante para ver sus valores.</p>`;
+  return `<div class="pg-readout-title">Jornada ${f + 1} <span style="color:var(--text-muted);letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif">· ${what}</span></div>
+    <div class="pg-readout-grid">${rows.map(r => `
+      <div class="pg-readout-row">
+        <span class="pg-dot" style="background:${progressColor(t, r.p)}"></span>
+        <span class="n">${esc(r.p)}</span>
+        <span class="v">${fmtProgress(r.v)}</span>
+      </div>`).join('')}</div>`;
+}
+
+// Actualiza guía + detalle al pasar el mouse / tocar una jornada, sin redibujar toda la vista.
+function updateProgressFocus() {
+  if (!progressCache) return;
+  const { series, geo } = progressCache;
+  const n = series.n;
+  const f = progressFocus == null ? n - 1 : Math.min(progressFocus, n - 1);
+  const x = n === 1 ? geo.L + geo.pw / 2 : geo.L + geo.pw * f / (n - 1);
+  const g = document.getElementById('pgGuide');
+  if (g) { g.setAttribute('x1', x); g.setAttribute('x2', x); }
+  const ro = document.getElementById('pgReadout');
+  if (ro) ro.innerHTML = progressReadoutHtml();
+}
+
+function renderProgress() {
+  const t = getTournament(activeTid);
+  if (!t) { view = 'home'; render(); return; }
+  if (t.hideResults && !standingsRevealed) { view = 'detail'; render(); return; }
+  if (!progressSelected) progressSelected = new Set(t.participants);
+  progressSelected = new Set([...progressSelected].filter(p => t.participants.includes(p)));
+
+  const series = computeProgressSeries(t);
+  const n = series.n;
+
+  const header = `
+    <button class="back-link" data-action="progress-back">← ${esc(t.name)}</button>
+    <header class="page-header">
+      <span class="eyebrow">${esc(t.name)}</span>
+      <h1>Progreso por jornada</h1>
+    </header>`;
+
+  if (n === 0) {
+    progressCache = null;
+    document.getElementById('app').innerHTML = `<div class="page">${header}
+      <p class="hint">Todavía no hay jornadas evaluadas. En cuanto se evalúe (o se empiece a evaluar) el primer enfrentamiento, aparecerá aquí la gráfica.</p></div>`;
+    return;
+  }
+
+  // geometría
+  const W = 640, H = 340, L = 48, R = 18, T = 18, B = 38;
+  const pw = W - L - R, ph = H - T - B;
+  const xAt = i => n === 1 ? L + pw / 2 : L + pw * i / (n - 1);
+
+  // escala Y estable (sobre TODOS los participantes, para que no "salte" al filtrar)
+  let maxV = 0;
+  t.participants.forEach(p => { for (let i = 0; i < n; i++) { const v = progressValue(series, p, i); if (v != null && v > maxV) maxV = v; } });
+  const scale = progressMetric === 'pct' ? { max: 1, step: 0.25 } : niceScale(maxV);
+  const yAt = v => T + ph - (v / scale.max) * ph;
+
+  // rejilla + ejes
+  let grid = '';
+  for (let v = 0; v <= scale.max + 1e-9; v += scale.step) {
+    const y = yAt(v);
+    grid += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="rgba(143,162,147,.18)" stroke-width="1"/>
+             <text x="${L - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="#8FA293">${fmtTick(v)}</text>`;
+  }
+  const every = n > 24 ? 4 : n > 12 ? 2 : 1;
+  let xlabels = '';
+  for (let i = 0; i < n; i++) {
+    if (i % every !== 0 && i !== n - 1) continue;
+    xlabels += `<text x="${xAt(i)}" y="${H - 14}" text-anchor="middle" font-size="11" fill="#8FA293">J${i + 1}</text>`;
+  }
+
+  // líneas
+  const visible = t.participants.filter(p => progressSelected.has(p));
+  let lines = '';
+  visible.forEach(p => {
+    const c = progressColor(t, p);
+    let d = '', pen = false, dots = '';
+    for (let i = 0; i < n; i++) {
+      const v = progressValue(series, p, i);
+      if (v == null) { pen = false; continue; }
+      const x = xAt(i).toFixed(1), y = yAt(v).toFixed(1);
+      d += (pen ? 'L' : 'M') + x + ' ' + y + ' ';
+      pen = true;
+      dots += `<circle cx="${x}" cy="${y}" r="3.2" fill="${c}" stroke="#13201A" stroke-width="1"/>`;
+    }
+    lines += `<path d="${d}" fill="none" stroke="${c}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
+  });
+
+  // columnas sensibles (hover / toque)
+  const colW = n === 1 ? pw : pw / (n - 1);
+  let cols = '';
+  for (let i = 0; i < n; i++) {
+    const x0 = Math.max(L, xAt(i) - colW / 2), x1 = Math.min(W - R, xAt(i) + colW / 2);
+    cols += `<rect class="pg-col" data-action="progress-focus" data-round="${i}" x="${x0}" y="${T}" width="${x1 - x0}" height="${ph}" fill="transparent"/>`;
+  }
+
+  const f = progressFocus == null ? n - 1 : Math.min(progressFocus, n - 1);
+  const gx = xAt(f);
+  progressCache = { t, series, geo: { L, pw } };
+
+  // chips: ordenados por total actual (clasificación en la última jornada evaluada)
+  const order = [...t.participants].sort((a, b) =>
+    (series.byP[b].cum.pts[n - 1] - series.byP[a].cum.pts[n - 1]) ||
+    (series.byP[b].cum.score[n - 1] - series.byP[a].cum.score[n - 1]));
+  const chips = order.map(p => `
+    <button class="pg-chip ${progressSelected.has(p) ? '' : 'off'}" data-action="progress-toggle" data-p="${esc(p)}" title="Mostrar / ocultar">
+      <span class="pg-dot" style="background:${progressColor(t, p)}"></span>${esc(p)}
+    </button>`).join('');
+
+  const hasPctData = t.participants.some(p => series.byP[p].cum.pct.some(v => v != null));
+  const noPctNote = progressMetric === 'pct' && !hasPctData
+    ? `<p class="hint">Este torneo no tiene el detalle de preguntas guardado, así que no se puede calcular el % de acierto.</p>` : '';
+
+  const tab = (act, key, cur, val, label) =>
+    `<button class="tab ${cur === val ? 'active' : ''}" data-action="${act}" data-${key}="${val}">${label}</button>`;
+
+  document.getElementById('app').innerHTML = `
+    <div class="page">
+      ${header}
+
+      <div class="form-block">
+        <label>¿Qué medir?</label>
+        <div class="tabs">
+          ${tab('progress-metric', 'metric', progressMetric, 'pts', 'Puntos')}
+          ${tab('progress-metric', 'metric', progressMetric, 'score', 'Puntaje')}
+          ${tab('progress-metric', 'metric', progressMetric, 'pct', '% acierto')}
+        </div>
+        <label style="margin-top:12px">Vista</label>
+        <div class="tabs">
+          ${tab('progress-mode', 'mode', progressMode, 'cum', 'Acumulado')}
+          ${tab('progress-mode', 'mode', progressMode, 'round', 'Por jornada')}
+        </div>
+        <p class="hint">Puntos = los de la tabla (3/2/1). Puntaje = aciertos sumados. % acierto = aciertos ÷ preguntas. Los puntos extra (ronda ★) no se incluyen.</p>
+      </div>
+
+      <section>
+        <h2 class="section-title">Participantes</h2>
+        <div class="pg-quick">
+          <button data-action="progress-all">Todos</button>
+          <button data-action="progress-top5">Top 5</button>
+          <button data-action="progress-none">Ninguno</button>
+        </div>
+        <div class="pg-chips">${chips}</div>
+      </section>
+
+      ${noPctNote}
+      <div class="pg-card">
+        <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Progreso por jornada">
+          ${grid}
+          <line x1="${L}" x2="${L}" y1="${T}" y2="${T + ph}" stroke="rgba(143,162,147,.35)"/>
+          <line x1="${L}" x2="${W - R}" y1="${T + ph}" y2="${T + ph}" stroke="rgba(143,162,147,.35)"/>
+          ${xlabels}
+          <line id="pgGuide" x1="${gx}" x2="${gx}" y1="${T}" y2="${T + ph}" stroke="#D8A84E" stroke-opacity=".55" stroke-dasharray="4 4"/>
+          ${lines}
+          ${cols}
+        </svg>
+      </div>
+
+      <div class="form-block" id="pgReadout">${progressReadoutHtml()}</div>
+      <p class="hint">Pasa el mouse o toca una jornada para ver el valor de cada participante. Las líneas se cortan en las jornadas en que alguien no jugó (descanso).</p>
+    </div>`;
+}
+
+function renderBuffetEdit() {
+  const t = getTournament(activeTid);
+  if (!t) { view='home'; render(); return; }
+  if (!editBuffetData) editBuffetData = JSON.parse(JSON.stringify(t.buffetData || { Temas: [] }));
+
+  const Temas = editBuffetData.Temas || [];
+  if (editBuffetTema === null || !Temas.find(d => String(d.Tema) === String(editBuffetTema))) {
+    editBuffetTema = Temas[0]?.Tema ?? null;
+  }
+
+  const TemaChips = Temas.map(d => `
+    <button class="p-select-chip ${String(d.Tema)===String(editBuffetTema)?'active':''}" data-action="buffet-edit-Tema" data-tema="${d.Tema}">
+      Tema ${d.Tema} <span class="count">${(d.preguntas||[]).length}p</span>
+    </button>`).join('');
+
+  const TemaObj = Temas.find(d => String(d.Tema) === String(editBuffetTema));
+  const preguntasHtml = (TemaObj?.preguntas || []).map((q, qi) => `
+    <div class="buffet-q-editor">
+      <div class="buffet-q-num">Pregunta ${qi+1}</div>
+      <label class="buffet-field-label">Pregunta</label>
+      <textarea class="buffet-field" rows="2" data-action="edit-field" data-field="pregunta" data-tema="${editBuffetTema}" data-qi="${qi}">${esc(q.pregunta||'')}</textarea>
+      <label class="buffet-field-label">Respuesta</label>
+      <textarea class="buffet-field" rows="2" data-action="edit-field" data-field="respuesta" data-tema="${editBuffetTema}" data-qi="${qi}">${esc(q.respuesta||'')}</textarea>
+      <label class="buffet-field-label">Justificación</label>
+      <textarea class="buffet-field" rows="3" data-action="edit-field" data-field="justificacion" data-tema="${editBuffetTema}" data-qi="${qi}">${esc(q.justificacion||'')}</textarea>
+      <button class="buffet-q-rm" data-action="buffet-edit-rm-q" data-tema="${editBuffetTema}" data-qi="${qi}">🗑 Eliminar esta pregunta</button>
+    </div>`).join('');
+
+  document.getElementById('app').innerHTML = `
+    <div class="page">
+      <button class="back-link" data-action="buffet-edit-cancel">← ${esc(t.name)}</button>
+      <header class="page-header">
+        <span class="eyebrow">Editar contenido</span>
+        <h1>Buffet · ${esc(t.name)}</h1>
+      </header>
+      <p class="hint">Corregí preguntas, respuestas o justificaciones que hayan quedado mal. Los cambios recién se guardan al tocar "Guardar cambios".</p>
+
+      <div class="form-block">
+        <label>Temas</label>
+        <div class="chip-list">${TemaChips || '<p class="hint">Este torneo no tiene temas buffet cargados.</p>'}</div>
+        ${Temas.length ? `<button class="btn-outline" data-action="buffet-edit-download" style="align-self:flex-start;margin-top:8px">⬇️ Descargar JSON (todos los temas)</button>` : ''}
+      </div>
+
+      ${TemaObj ? `
+        <div class="form-block">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <label style="margin:0">Preguntas del tema ${editBuffetTema} (${(TemaObj.preguntas||[]).length})</label>
+            ${(TemaObj.preguntas||[]).length > 0 ? `<button class="btn-outline" data-action="buffet-edit-clear-q" style="height:34px;font-size:.74rem;padding:0 12px;white-space:nowrap">🗑 Vaciar todas</button>` : ''}
+          </div>
+          <div class="buffet-q-list">${preguntasHtml || '<p class="hint">Sin preguntas en este tema.</p>'}</div>
+        </div>
+
+        <div class="form-block">
+          <div class="pcontent-editor">
+            <span class="pcontent-editor-label">Formato para copiar/pegar</span>
+            <p class="hint">Copiá este formato, completalo (podés poner varias preguntas separadas por coma) y pegalo abajo.</p>
+            <pre id="buffetFormatSample" style="background:var(--bg-panel);border:1px solid var(--accent-gold-dim);border-radius:8px;padding:10px 12px;font-size:.76rem;white-space:pre-wrap;overflow-x:auto;margin:0">{
+  "pregunta": "",
+  "respuesta": "",
+  "justificacion": ""
+}</pre>
+            <button class="btn-secondary" data-action="buffet-copy-format" style="align-self:flex-start;height:34px;font-size:.74rem">📋 Copiar formato</button>
+          </div>
+        </div>
+
+        <div class="form-block">
+          <div class="pcontent-editor">
+            <span class="pcontent-editor-label">Pegar preguntas al tema ${editBuffetTema}</span>
+            <textarea id="buffetPasteArea" placeholder='Pegá acá uno o varios objetos { "pregunta": ..., "respuesta": ..., "justificacion": ... }' style="min-height:120px;font-family:monospace;font-size:.8rem"></textarea>
+            <button class="btn-secondary" data-action="buffet-edit-paste-q" style="align-self:flex-start">📥 Agregar preguntas pegadas</button>
+          </div>
+        </div>
+
+        <div class="form-block">
+          <div class="pcontent-editor">
+            <span class="pcontent-editor-label">Agregar pregunta al tema ${editBuffetTema}</span>
+            <input id="buffetNewPregunta" type="text" placeholder="Pregunta">
+            <input id="buffetNewRespuesta" type="text" placeholder="Respuesta">
+            <textarea id="buffetNewJustificacion" placeholder="Justificación (opcional)" style="min-height:60px"></textarea>
+            <button class="btn-secondary" data-action="buffet-edit-add-q" style="align-self:flex-start">+ Agregar pregunta</button>
+          </div>
+        </div>
+      ` : ''}
+
+      <button class="btn-primary" data-action="buffet-edit-save">Guardar cambios</button>
+      <button class="btn-outline" data-action="buffet-edit-cancel">Cancelar</button>
+    </div>`;
+}
+
+function renderSharedEdit() {
+  const t = getTournament(activeTid);
+  if (!t) { view='home'; render(); return; }
+  if (!editSharedData) editSharedData = ensureQuestionsByRound(t);
+
+  const rounds = editSharedData;
+  if (editSharedRound === null || !rounds.find(r => r.round === editSharedRound)) {
+    editSharedRound = rounds[0]?.round ?? null;
+  }
+
+  const roundChips = rounds.map(r => `
+    <button class="p-select-chip ${r.round===editSharedRound?'active':''} ${(r.questions||[]).length===0?'empty':''}" data-action="shared-edit-round" data-round="${r.round}">
+      Jornada ${r.round} <span class="count">${(r.questions||[]).length}</span>
+    </button>`).join('');
+
+  const roundObj = rounds.find(r => r.round === editSharedRound);
+  const questionsHtml = (roundObj?.questions || []).map((q, qi) => `
+    <div class="buffet-q-editor">
+      <div class="buffet-q-num">Pregunta ${qi+1}</div>
+      <textarea class="buffet-field" rows="2" data-action="shared-edit-field" data-round="${editSharedRound}" data-qi="${qi}">${esc(q.text||'')}</textarea>
+      <button class="buffet-q-rm" data-action="shared-edit-rm-q" data-round="${editSharedRound}" data-qi="${qi}">🗑 Eliminar esta pregunta</button>
+    </div>`).join('');
+
+  document.getElementById('app').innerHTML = `
+    <div class="page">
+      <button class="back-link" data-action="shared-edit-cancel">← ${esc(t.name)}</button>
+      <header class="page-header">
+        <span class="eyebrow">Editar contenido</span>
+        <h1>Por jornada · ${esc(t.name)}</h1>
+      </header>
+      <p class="hint">Cada jornada tiene su propio contenido: podés definir preguntas distintas fecha a fecha. Los cambios recién se guardan al tocar "Guardar cambios".</p>
+
+      <div class="form-block">
+        <label>Jornadas</label>
+        <div class="chip-list">${roundChips || '<p class="hint">Este torneo no tiene jornadas.</p>'}</div>
+      </div>
+
+      ${roundObj ? `
+        <div class="form-block">
+          <label>Preguntas de la Jornada ${editSharedRound}</label>
+          <div class="buffet-q-list">${questionsHtml || '<p class="hint">Sin preguntas en esta jornada.</p>'}</div>
+        </div>
+
+        <div class="form-block">
+          <div class="pcontent-editor">
+            <span class="pcontent-editor-label">Agregar pregunta a la Jornada ${editSharedRound}</span>
+            <input id="sharedNewQuestion" type="text" placeholder="Pregunta">
+            <button class="btn-secondary" data-action="shared-edit-add-q" style="align-self:flex-start">+ Agregar pregunta</button>
+          </div>
+        </div>
+      ` : ''}
+
+      <button class="btn-primary" data-action="shared-edit-save">Guardar cambios</button>
+      <button class="btn-outline" data-action="shared-edit-cancel">Cancelar</button>
+    </div>`;
+}
+
+function renderRoundTemasEdit() {
+  const t = getTournament(activeTid);
+  if (!t) { view='home'; render(); return; }
+  if (!editRoundTemas) editRoundTemas = ensureRoundTemas(t);
+  if (!editRoundQuestionsPerTema) editRoundQuestionsPerTema = ensureRoundQuestionsPerTema(t);
+
+  const bd = t.buffetData;
+  const availTemas = bd ? bd.Temas.map(d => d.Tema) : [];
+
+  const roundNums = t.rounds.map((_, i) => i + 1);
+  if (editRoundTemasRound === null || !roundNums.includes(editRoundTemasRound)) {
+    editRoundTemasRound = roundNums[0] ?? null;
+  }
+
+  const roundChips = roundNums.map(r => {
+    const assigned = editRoundTemas[r] || [];
+    return `<button class="p-select-chip ${r===editRoundTemasRound?'active':''} ${assigned.length===0?'empty':''}" data-action="round-temas-edit-round" data-round="${r}">Jornada ${r} <span class="count">${assigned.length} tema${assigned.length!==1?'s':''}</span></button>`;
+  }).join('');
+
+  const assigned = editRoundTemas[editRoundTemasRound] || [];
+  const TemaToggles = availTemas.map(d => {
+    const on = assigned.some(x => String(x) === String(d));
+    const qCount = (bd.Temas.find(x=>x.Tema===d)?.preguntas||[]).length;
+    return `<button class="p-select-chip ${on?'active':''}" data-action="round-temas-edit-toggle" data-tema="${d}" data-round="${editRoundTemasRound}">Tema ${d} <span class="count">${qCount}p</span></button>`;
+  }).join('');
+
+  const qptValue = editRoundQuestionsPerTema[editRoundTemasRound] ?? null;
+  const qptOptions = [
+    { n: 'all', label: 'Todas' },
+    { n: 1, label: '1' },
+    { n: 2, label: '2' },
+    { n: 3, label: '3' }
+  ];
+  const qptChips = qptOptions.map(opt => {
+    const active = opt.n === 'all' ? qptValue === null : qptValue === opt.n;
+    return `<button class="tab ${active?'active':''}" data-action="round-temas-edit-qpt" data-round="${editRoundTemasRound}" data-n="${opt.n}">${opt.label}</button>`;
+  }).join('');
+
+  const totalPreguntas = assigned.reduce((s, d) => {
+    const Tema = bd.Temas.find(x => x.Tema === d);
+    if (!Tema) return s;
+    const disponibles = Tema.preguntas.length;
+    return s + (qptValue !== null ? Math.min(qptValue, disponibles) : disponibles);
+  }, 0);
+
+  document.getElementById('app').innerHTML = `
+    <div class="page">
+      <button class="back-link" data-action="round-temas-edit-cancel">← ${esc(t.name)}</button>
+      <header class="page-header">
+        <span class="eyebrow">Asignar temas</span>
+        <h1>Por jornada · ${esc(t.name)}</h1>
+      </header>
+      <p class="hint">Los temas quedan sueltos, sin ligarse a ningún participante: todos responden lo mismo esa jornada. No se puede evaluar un enfrentamiento de una jornada sin temas asignados. Los cambios recién se guardan al tocar "Guardar cambios".</p>
+
+      <div class="form-block">
+        <label>Jornadas</label>
+        <div class="chip-list">${roundChips || '<p class="hint">Este torneo no tiene jornadas.</p>'}</div>
+      </div>
+
+      ${editRoundTemasRound ? `
+        <div class="form-block">
+          <label>Temas de la Jornada ${editRoundTemasRound}</label>
+          <div class="chip-list">${TemaToggles || '<p class="hint">Este torneo no tiene temas cargados.</p>'}</div>
+          <button class="btn-secondary" data-action="round-temas-edit-auto" data-round="${editRoundTemasRound}" style="height:38px;font-size:.78rem">🎲 Auto-asignar</button>
+        </div>
+
+        <div class="form-block">
+          <label>Preguntas por tema en esta jornada</label>
+          <div class="tabs">${qptChips}</div>
+          <p class="hint">Si un tema tiene menos preguntas cargadas que la cantidad elegida, se usan todas las que tenga.</p>
+          <p class="hint">${assigned.length} tema${assigned.length!==1?'s':''} asignado${assigned.length!==1?'s':''} · ${totalPreguntas} pregunta${totalPreguntas!==1?'s':''} en total para esta jornada</p>
+        </div>
+      ` : ''}
+
+      <button class="btn-primary" data-action="round-temas-edit-save">Guardar cambios</button>
+      <button class="btn-outline" data-action="round-temas-edit-cancel">Cancelar</button>
+    </div>`;
+}
+
+function renderAddParticipants() {
+  const t = getTournament(activeTid);
+  if (!t) { view = 'home'; render(); return; }
+
+  const chips = addNames.map((p, i) => `
+    <span class="chip">
+      ${esc(p)}
+      <button data-action="addp-rm-name" data-index="${i}">×</button>
+    </span>`).join('');
+
+  const projectedParticipants = [...t.participants, ...addNames];
+  const projectedRounds = addNames.length ? generateRounds(projectedParticipants) : t.rounds;
+  const roundsDelta = projectedRounds.length - t.rounds.length;
+
+  let contentBlockHtml;
+  if (t.contentType === 'buffet') {
+    const bd = t.buffetData;
+    const availTemas = bd ? bd.Temas.map(d => d.Tema) : [];
+    const participantChips = addNames.map(p => {
+      const assigned = addParticipantTemas[p] || [];
+      const active = addBuffetAssigning === p;
+      return `<button class="p-select-chip ${active?'active':''} ${assigned.length===0?'empty':''}" data-action="addp-buffet-assign" data-name="${esc(p)}">${esc(p)} <span class="count">${assigned.length} tema${assigned.length!==1?'s':''}</span></button>`;
+    }).join('');
+
+    let assignHtml = '';
+    if (addBuffetAssigning && addNames.includes(addBuffetAssigning) && bd) {
+      const assigned = addParticipantTemas[addBuffetAssigning] || [];
+      const toggles = availTemas.map(d => {
+        const on = assigned.some(x => String(x) === String(d));
+        const qCount = (bd.Temas.find(x=>x.Tema===d)?.preguntas||[]).length;
+        return `<button class="p-select-chip ${on?'active':''}" data-action="addp-toggle-tema" data-tema="${d}" data-name="${esc(addBuffetAssigning)}">Tema ${d} <span class="count">${qCount}p</span></button>`;
+      }).join('');
+      assignHtml = `
+        <div class="pcontent-editor">
+          <span class="pcontent-editor-label">Temas de: ${esc(addBuffetAssigning)}</span>
+          <div class="chip-list">${toggles}</div>
+        </div>`;
+    }
+
+    contentBlockHtml = `
+      <div class="form-block">
+        <label>Asignar temas a los nuevos participantes</label>
+        ${addNames.length === 0
+          ? '<p class="hint">Agregá participantes arriba para asignarles temas.</p>'
+          : `
+            <div class="chip-list">${participantChips}</div>
+            <p class="hint">Toca un participante para asignarle temas. Pueden compartir temas.</p>
+            ${assignHtml}
+            <button class="btn-secondary" data-action="addp-buffet-auto-all" style="height:42px">🎲 Auto-asignar a todos</button>
+          `}
+      </div>`;
+  } else if (t.contentType === 'individual') {
+    contentBlockHtml = `
+      <div class="form-block">
+        <label>Contenido de los nuevos participantes</label>
+        ${addNames.length === 0
+          ? '<p class="hint">Agregá participantes arriba para cargarles su contenido.</p>'
+          : `
+            <div class="chip-list">
+              ${addNames.map(p => {
+                const count = (addParticipantContent[p] || []).length;
+                const active = addEditingParticipant === p;
+                return `<button class="p-select-chip ${active?'active':''} ${count===0?'empty':''}" data-action="addp-edit-content" data-name="${esc(p)}">${esc(p)} <span class="count">${count}</span></button>`;
+              }).join('')}
+            </div>
+            <p class="hint">Cada participante nuevo necesita al menos 1 elemento de contenido.</p>
+            ${addEditingParticipant && addNames.includes(addEditingParticipant) ? renderAddContentEditor(addEditingParticipant) : ''}
+          `}
+      </div>`;
+  } else {
+    contentBlockHtml = `
+      <div class="form-block">
+        <label>Contenido</label>
+        <p class="hint">Este torneo usa contenido "mismo para todos". Las jornadas nuevas van a reutilizar el banco de preguntas ya cargado; si querés, después podés definir preguntas propias para cada jornada desde "✎ Editar contenido por jornada".</p>
+      </div>`;
+  }
+
+  const canConfirm = addNames.length > 0 && (
+    t.contentType === 'buffet' ? addNames.every(p => (addParticipantTemas[p]||[]).length >= 1) :
+    t.contentType === 'individual' ? addNames.every(p => (addParticipantContent[p]||[]).length >= 1) :
+    true
+  );
+
+  document.getElementById('app').innerHTML = `
+    <div class="page">
+      <button class="back-link" data-action="addp-cancel">← ${esc(t.name)}</button>
+      <header class="page-header">
+        <span class="eyebrow">${esc(t.name)}</span>
+        <h1>Agregar participantes</h1>
+      </header>
+      <p class="hint">Al confirmar se regenera el calendario entre todos los participantes (los que ya estaban + los nuevos). Los enfrentamientos ya jugados entre quienes ya estaban conservan su resultado; las jornadas y enfrentamientos aumentan en proporción a la cantidad de gente que agregues.</p>
+
+      <div class="form-block">
+        <label>Nuevos participantes</label>
+        <div class="tabs">
+          <button class="tab ${addNameInputMode==='manual'?'active':''}" data-action="addp-mode" data-mode="manual">✏️ Uno por uno</button>
+          <button class="tab ${addNameInputMode==='bulk'?'active':''}" data-action="addp-mode" data-mode="bulk">📋 Importar lista</button>
+        </div>
+        <div style="display:${addNameInputMode==='manual'?'flex':'none'};gap:8px">
+          <input id="addParticipantInput" type="text" placeholder="Nombre del participante" style="flex:1">
+          <button class="btn-secondary" data-action="addp-add-name">Agregar</button>
+        </div>
+        <div class="import-area ${addNameInputMode==='bulk'?'visible':''}">
+          <textarea id="addParticipantBulk" placeholder='["Ana","Pedro"] o una línea por nombre'></textarea>
+          <button class="btn-secondary" data-action="addp-import-names">Importar</button>
+          <p id="addpFeedback" class="import-feedback"></p>
+        </div>
+        <div class="chip-list">${chips || '<p class="hint">Sin participantes nuevos aún.</p>'}</div>
+        ${addNames.length ? `<p class="hint">El torneo pasará de ${t.participants.length} a ${projectedParticipants.length} participantes, y de ${t.rounds.length} a ${projectedRounds.length} jornada${projectedRounds.length===1?'':'s'}${roundsDelta ? ` (+${roundsDelta})` : ''}.</p>` : ''}
+      </div>
+
+      <hr class="divider">
+
+      ${contentBlockHtml}
+
+      <button class="btn-primary" data-action="addp-confirm" ${canConfirm?'':'disabled'}>Agregar y regenerar jornadas</button>
+      <button class="btn-outline" data-action="addp-cancel">Cancelar</button>
+    </div>`;
+
+  if (addNameInputMode === 'manual') document.getElementById('addParticipantInput')?.focus();
+}
+
+function renderAddContentEditor(name) {
+  const items = addParticipantContent[name] || [];
+  const ichips = items.map((q, i) => `
+    <span class="chip question-chip">
+      ${esc(q.text.length > 55 ? q.text.slice(0,55)+'…' : q.text)}
+      <button data-action="addp-rm-content" data-name="${esc(name)}" data-index="${i}">×</button>
+    </span>`).join('');
+  return `
+    <div class="pcontent-editor">
+      <span class="pcontent-editor-label">Editando contenido de: ${esc(name)}</span>
+      <div style="display:flex;gap:8px">
+        <input id="addpContentInput" type="text" placeholder="Contenido o pregunta para ${esc(name)}…" style="flex:1">
+        <button class="btn-secondary" data-action="addp-add-content" data-name="${esc(name)}">Agregar</button>
+      </div>
+      <div class="chip-list">${ichips || '<p class="hint">Sin contenido aún.</p>'}</div>
+    </div>`;
+}
+
+function renderRealNamesEdit() {
+  const t = getTournament(activeTid);
+  if (!t) { view = 'detail'; render(); return; }
+
+  const rows = t.participants.map(p => {
+    const val = editRealNames && editRealNames[p] != null ? editRealNames[p] : '';
+    return `
+      <div class="row-input" style="align-items:center">
+        <span style="flex:1;color:var(--text-muted);font-size:.9rem">${esc(p)}</span>
+        <input type="text" data-action="real-name-field" data-pseudo="${esc(p)}" value="${esc(val)}" placeholder="Nombre real (opcional)" style="flex:1.4">
+      </div>`;
+  }).join('');
+
+  document.getElementById('app').innerHTML = `
+    <div class="page">
+      <button class="back-link" data-action="real-names-cancel">← ${esc(t.name)}</button>
+
+      <header class="page-header">
+        <span class="eyebrow">${esc(t.name)}</span>
+        <h1>Nombres reales</h1>
+      </header>
+
+      <p class="hint">Si alguien se anotó con un seudónimo, escribí acá su nombre real. Se usará en los certificados y el medallero del PDF en lugar del seudónimo. Si dejás un campo vacío, se usa el seudónimo tal cual.</p>
+
+      <div class="form-block">${rows}</div>
+
+      <button class="btn-primary" data-action="real-names-save">Guardar</button>
+    </div>`;
+}
+
+function renderBonus() {
+  const t = getTournament(activeTid);
+  if (!t) { view='home'; render(); return; }
+
+  const participants = t.participants;
+  if (bonusIdx < 0) bonusIdx = 0;
+  if (bonusIdx >= participants.length) bonusIdx = participants.length - 1;
+
+  const name = participants[bonusIdx];
+  const score = bonusScores[name] ?? 0;
+  const isLast = bonusIdx === participants.length - 1;
+
+  const dots = participants.map((p, i) => {
+    const hasPts = (bonusScores[p] ?? 0) > 0 || i < bonusIdx;
+    const cls = i === bonusIdx ? 'bonus-dot current'
+      : (hasPts ? 'bonus-dot done' : 'bonus-dot');
+    return `<div class="${cls}" data-action="bonus-go" data-idx="${i}" title="${esc(p)}"></div>`;
+  }).join('');
+
+  document.getElementById('app').innerHTML = `
+    <div class="page">
+      <button class="back-link" data-action="bonus-cancel">← ${esc(t.name)}</button>
+
+      <header class="page-header">
+        <span class="eyebrow">${esc(t.name)}</span>
+        <h1>Puntos extra</h1>
+      </header>
+
+      <div class="bonus-counter">${bonusIdx+1} de ${participants.length}</div>
+      <div class="bonus-dots">${dots}</div>
+
+      <div class="bonus-player-card">
+        <div class="bonus-player-name">${esc(name)}</div>
+        <div class="bonus-score-display" id="bonusScore">${score}</div>
+        <div class="bonus-score-btns">
+          <button class="bonus-btn minus" data-action="bonus-delta" data-delta="-1">−</button>
+          <button class="bonus-btn plus"  data-action="bonus-delta" data-delta="1">+</button>
+        </div>
+        <div class="bonus-custom-row">
+          <input id="bonusCustom" type="number" min="0" placeholder="Pts directos">
+          <button data-action="bonus-set">OK</button>
+        </div>
+      </div>
+
+      <div class="bonus-nav">
+        <button class="btn-bonus-nav secondary" data-action="bonus-prev" ${bonusIdx===0?'disabled':''}>← Anterior</button>
+        ${isLast
+          ? `<button class="btn-bonus-nav primary" data-action="bonus-save">Guardar ✓</button>`
+          : `<button class="btn-bonus-nav primary" data-action="bonus-next">Siguiente →</button>`}
+      </div>
+    </div>`;
+}
+
+// ── sincronización con el worker ──
+async function runSync() {
+  if (syncState.loading) return;
+  syncState = { loading: true, msg: '', error: false };
+  if (view === 'home') render();
+  try {
+    const r = await syncFromApi();
+    const parts = [];
+    if (r.imported) parts.push(`${r.imported} torneo${r.imported===1?'':'s'} nuevo${r.imported===1?'':'s'}`);
+    if (r.updated) parts.push(`${r.updated} actualizado${r.updated===1?'':'s'}`);
+    if (r.newParticipants) parts.push(`${r.newParticipants} participante${r.newParticipants===1?'':'s'} nuevo${r.newParticipants===1?'':'s'}`);
+    let msg = parts.length ? 'Sincronizado: ' + parts.join(' · ') + '.' : 'Sincronizado: no hay torneos en el worker.';
+    if (r.skipped.length) msg += ' Omitidos: ' + r.skipped.map(s => `${s.titulo} (${s.motivo})`).join(', ') + '.';
+    syncState = { loading: false, msg, error: false };
+  } catch (e) {
+    syncState = { loading: false, msg: 'No se pudo sincronizar con el worker: ' + (e?.message || e), error: true };
+  }
+  render();
+}
+
+// ── event delegation ──
+document.getElementById('app').addEventListener('click', e => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const action = el.dataset.action;
+
+  if (action === 'sync-api') {
+    runSync();
+
+  } else if (action === 'new') {
+    draftParticipants = []; draftQuestions = []; draftName = ''; inputMode = 'manual'; questionInputMode = 'manual';
+    contentType = 'shared'; sharedContentMode = 'manual'; draftParticipantContent = {}; editingParticipant = null; pcInputMode = 'manual';
+    draftBuffetData = null; draftParticipantTemas = {}; buffetAssigningParticipant = null;
+    draftQuestionsPerTema = 3;
+    draftQuestionsByRound = {}; sharedEditingRound = null;
+    draftRoundTemas = {}; sharedTemasAssigningRound = null;
+    draftHideResults = false;
+    view = 'form'; render();
+
+  } else if (action === 'progress-open') {
+    const t = getTournament(activeTid);
+    if (!t) return;
+    progressSelected = new Set(t.participants); progressFocus = null;
+    view = 'progress'; render(); window.scrollTo(0, 0);
+
+  } else if (action === 'progress-back') {
+    view = 'detail'; render();
+
+  } else if (action === 'progress-metric') {
+    progressMetric = el.dataset.metric; render();
+
+  } else if (action === 'progress-mode') {
+    progressMode = el.dataset.mode; render();
+
+  } else if (action === 'progress-toggle') {
+    const name = el.dataset.p;
+    if (progressSelected.has(name)) progressSelected.delete(name); else progressSelected.add(name);
+    render();
+
+  } else if (action === 'progress-all') {
+    const t = getTournament(activeTid); if (!t) return;
+    progressSelected = new Set(t.participants); render();
+
+  } else if (action === 'progress-none') {
+    progressSelected = new Set(); render();
+
+  } else if (action === 'progress-top5') {
+    const t = getTournament(activeTid); if (!t) return;
+    progressSelected = new Set(computeRanking(t).ranking.slice(0, 5)); render();
+
+  } else if (action === 'progress-focus') {
+    progressFocus = parseInt(el.dataset.round, 10); updateProgressFocus();
+
+  } else if (action === 'home') {
+    view = 'home'; standingsRevealed = false; rankingImageDataUrl = null; render();
+
+  } else if (action === 'open') {
+    activeTid = el.dataset.id; standingsRevealed = false; rankingImageDataUrl = null; view = 'detail'; render();
+
+  } else if (action === 'delete') {
+    if (!confirm('¿Quitar este torneo de este navegador? Se pierden los resultados guardados aquí; si sigue existiendo en el worker volverá a aparecer, sin resultados, al sincronizar.')) return;
+    dbDelete(el.dataset.id);
+    if (activeTid === el.dataset.id) activeTid = null;
+    render();
+
+  } else if (action === 'export-tournament') {
+    const t = getTournament(el.dataset.id);
+    if (!t) return;
+    downloadJSON(t, `${slugify(t.name)}-torneo.json`);
+
+  } else if (action === 'import-tournament-open') {
+    document.getElementById('importTournamentInput')?.click();
+
+  } else if (action === 'generate-ranking-image') {
+    const t = getTournament(activeTid);
+    if (!t) return;
+    if (t.hideResults && !standingsRevealed) {
+      alert('Los resultados están ocultos. Revelá la tabla antes de generar la imagen.');
+      return;
+    }
+    generateTop5Image(t).then(({ dataUrl, filename }) => {
+      rankingImageDataUrl = dataUrl;
+      rankingImageFilename = filename;
+      render();
+    });
+
+  } else if (action === 'close-ranking-image') {
+    rankingImageDataUrl = null;
+    render();
+
+  } else if (action === 'real-names-edit-open') {
+    const t = getTournament(activeTid);
+    if (!t) return;
+    editRealNames = { ...(t.realNames || {}) };
+    view = 'real-names-edit'; render();
+
+  } else if (action === 'real-names-save') {
+    const t = getTournament(activeTid);
+    if (!t || !editRealNames) return;
+    const cleaned = {};
+    Object.entries(editRealNames).forEach(([pseudo, real]) => {
+      const v = String(real || '').trim();
+      if (v) cleaned[pseudo] = v;
+    });
+    t.realNames = cleaned;
+    saveTournament(t);
+    editRealNames = null;
+    view = 'detail'; render();
+
+  } else if (action === 'real-names-cancel') {
+    editRealNames = null;
+    view = 'detail'; render();
+
+  } else if (action === 'generate-certificates-pdf') {
+    const t = getTournament(activeTid);
+    if (!t) return;
+    if (t.hideResults && !standingsRevealed) {
+      alert('Los resultados están ocultos. Revelá la tabla antes de generar los certificados.');
+      return;
+    }
+    if (!t.participants || t.participants.length === 0) {
+      alert('Este torneo no tiene participantes.');
+      return;
+    }
+    const originalText = el.textContent;
+    el.disabled = true;
+    el.textContent = 'Generando…';
+    generateCertificatesPDF(t)
+      .catch(err => {
+        console.error(err);
+        alert('No se pudo generar el PDF: ' + err.message);
+      })
+      .finally(() => {
+        el.disabled = false;
+        el.textContent = originalText;
+      });
+
+  } else if (action === 'mode-p') {
+    syncDraftName(); inputMode = el.dataset.mode; render();
+
+  } else if (action === 'mode-q') {
+    syncDraftName(); questionInputMode = el.dataset.mode; render();
+
+  } else if (action === 'add-participant') {
+    syncDraftName();
+    const inp = document.getElementById('participantInput');
+    const val = inp?.value.trim();
+    if (val && !draftParticipants.includes(val)) { draftParticipants.push(val); }
+    if (inp) inp.value = '';
+    render(); document.getElementById('participantInput')?.focus();
+
+  } else if (action === 'rm-participant') {
+    syncDraftName();
+    const removed = draftParticipants[+el.dataset.index];
+    draftParticipants.splice(+el.dataset.index, 1);
+    if (removed) { delete draftParticipantContent[removed]; delete draftParticipantTemas[removed]; }
+    if (editingParticipant === removed) editingParticipant = draftParticipants[0] || null;
+    if (buffetAssigningParticipant === removed) buffetAssigningParticipant = null;
+    render();
+
+  } else if (action === 'import-participants') {
+    syncDraftName();
+    const raw = document.getElementById('pJsonInput')?.value.trim() || '';
+    const fb = document.getElementById('pFeedback');
+    let names;
+    try { const parsed = JSON.parse(raw); names = Array.isArray(parsed) ? parsed.map(String) : null; }
+    catch { names = raw.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean); }
+    if (!names || !names.length) { fb.textContent='No se encontraron nombres.'; fb.className='import-feedback err'; return; }
+    let added=0;
+    names.forEach(n => { if(n&&!draftParticipants.includes(n)){ draftParticipants.push(n); added++; } });
+    fb.textContent=`${added} importado${added===1?'':'s'}.`; fb.className='import-feedback ok';
+    render();
+
+  } else if (action === 'shared-select-round') {
+    syncDraftName();
+    sharedEditingRound = +el.dataset.round;
+    render();
+    document.getElementById('questionInput')?.focus();
+
+  } else if (action === 'add-question') {
+    syncDraftName();
+    const inp = document.getElementById('questionInput');
+    const val = inp?.value.trim();
+    if (val && sharedEditingRound) {
+      if (!draftQuestionsByRound[sharedEditingRound]) draftQuestionsByRound[sharedEditingRound] = [];
+      draftQuestionsByRound[sharedEditingRound].push({ text: val });
+    }
+    if (inp) inp.value = '';
+    render(); document.getElementById('questionInput')?.focus();
+
+  } else if (action === 'rm-question') {
+    syncDraftName();
+    const round = +el.dataset.round;
+    (draftQuestionsByRound[round] || []).splice(+el.dataset.index, 1);
+    render();
+
+  } else if (action === 'import-questions') {
+    syncDraftName();
+    const raw = document.getElementById('qBulkInput')?.value.trim() || '';
+    const lines = raw.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+    const fb = document.getElementById('qFeedback');
+    if (!lines.length) { fb.textContent='No se encontraron preguntas.'; fb.className='import-feedback err'; return; }
+    if (sharedEditingRound) {
+      if (!draftQuestionsByRound[sharedEditingRound]) draftQuestionsByRound[sharedEditingRound] = [];
+      lines.forEach(l => draftQuestionsByRound[sharedEditingRound].push({ text: l }));
+    }
+    fb.textContent=`${lines.length} pregunta${lines.length===1?'':'s'} importada${lines.length===1?'':'s'} para la Jornada ${sharedEditingRound}.`; fb.className='import-feedback ok';
+    render();
+
+  } else if (action === 'content-type') {
+    syncDraftName();
+    contentType = el.dataset.type;
+    render();
+
+  } else if (action === 'shared-content-mode') {
+    syncDraftName();
+    sharedContentMode = el.dataset.mode;
+    render();
+
+  } else if (action === 'shared-temas-assign-round') {
+    syncDraftName();
+    sharedTemasAssigningRound = +el.dataset.round;
+    render();
+
+  } else if (action === 'toggle-round-tema') {
+    syncDraftName();
+    const round = +el.dataset.round;
+    const rawTema = el.dataset.tema;
+    const match = (draftBuffetData?.Temas || []).find(d => String(d.Tema) === String(rawTema));
+    const Tema = match ? match.Tema : rawTema;
+    if (!draftRoundTemas[round]) draftRoundTemas[round] = [];
+    const idx = draftRoundTemas[round].findIndex(x => String(x) === String(Tema));
+    if (idx >= 0) draftRoundTemas[round].splice(idx, 1);
+    else draftRoundTemas[round].push(Tema);
+    draftRoundTemas[round].sort((a, b) =>
+      String(a).localeCompare(String(b), 'es', { numeric: true, sensitivity: 'base' })
+    );
+    render();
+
+  } else if (action === 'shared-temas-auto-round') {
+    syncDraftName();
+    const round = +el.dataset.round;
+    if (draftBuffetData) {
+      const allTemas = draftBuffetData.Temas.map(d => d.Tema);
+      draftRoundTemas[round] = [allTemas[Math.floor(Math.random() * allTemas.length)]];
+    }
+    render();
+
+  } else if (action === 'shared-temas-auto-all') {
+    syncDraftName();
+    if (draftBuffetData) {
+      const allTemas = draftBuffetData.Temas.map(d => d.Tema);
+      const previewRounds = draftParticipants.length >= 2 ? generateRounds(draftParticipants) : [];
+      previewRounds.forEach((_, i) => {
+        const r = i + 1;
+        draftRoundTemas[r] = [allTemas[i % allTemas.length]];
+      });
+    }
+    render();
+
+  } else if (action === 'set-questions-per-tema') {
+    draftQuestionsPerTema = +el.dataset.n;
+    render();
+
+  } else if (action === 'edit-pcontent') {
+    syncDraftName();
+    editingParticipant = el.dataset.name;
+    pcInputMode = 'manual';
+    render();
+    document.getElementById('pcInput')?.focus();
+
+  } else if (action === 'pc-mode') {
+    pcInputMode = el.dataset.mode; render();
+
+  } else if (action === 'add-pcontent') {
+    const name = el.dataset.name;
+    const inp = document.getElementById('pcInput');
+    const val = inp?.value.trim();
+    if (val) {
+      if (!draftParticipantContent[name]) draftParticipantContent[name] = [];
+      draftParticipantContent[name].push({ text: val });
+    }
+    if (inp) inp.value = '';
+    render(); document.getElementById('pcInput')?.focus();
+
+  } else if (action === 'rm-pcontent') {
+    const name = el.dataset.name;
+    (draftParticipantContent[name] || []).splice(+el.dataset.index, 1);
+    render();
+
+  } else if (action === 'import-pcontent') {
+    const name = el.dataset.name;
+    const raw = document.getElementById('pcBulkInput')?.value.trim() || '';
+    const lines = raw.split(/\n+/).map(s=>s.trim()).filter(Boolean);
+    const fb = document.getElementById('pcFeedback');
+    if (!lines.length) { fb.textContent='No se encontraron elementos.'; fb.className='import-feedback err'; return; }
+    if (!draftParticipantContent[name]) draftParticipantContent[name] = [];
+    lines.forEach(l => draftParticipantContent[name].push({ text: l }));
+    fb.textContent=`${lines.length} elemento${lines.length===1?'':'s'} importado${lines.length===1?'':'s'} para ${name}.`; fb.className='import-feedback ok';
+    render();
+
+  } else if (action === 'buffet-file') {
+    // handled by change event below
+
+  } else if (action === 'toggle-Tema') {
+    syncDraftName();
+    const name = el.dataset.name;
+    // El tema puede ser numérico o texto: buscamos el valor "real" en draftBuffetData
+    // para no perder su tipo original (por si viene de un JSON con temas numéricos).
+    const rawTema = el.dataset.tema;
+    const match = (draftBuffetData?.Temas || []).find(d => String(d.Tema) === String(rawTema));
+    const Tema = match ? match.Tema : rawTema;
+    if (!draftParticipantTemas[name]) draftParticipantTemas[name] = [];
+    const idx = draftParticipantTemas[name].findIndex(x => String(x) === String(Tema));
+    if (idx >= 0) draftParticipantTemas[name].splice(idx, 1);
+    else draftParticipantTemas[name].push(Tema);
+    draftParticipantTemas[name].sort((a, b) =>
+      String(a).localeCompare(String(b), 'es', { numeric: true, sensitivity: 'base' })
+    );
+    render();
+
+  } else if (action === 'buffet-assign') {
+    syncDraftName();
+    buffetAssigningParticipant = el.dataset.name;
+    render();
+
+  } else if (action === 'buffet-auto') {
+    syncDraftName();
+    const name = el.dataset.name;
+    if (draftBuffetData) {
+      const allTemas = draftBuffetData.Temas.map(d => d.Tema);
+      draftParticipantTemas[name] = [allTemas[Math.floor(Math.random() * allTemas.length)]];
+    }
+    render();
+
+  } else if (action === 'buffet-auto-all') {
+    syncDraftName();
+    if (draftBuffetData) {
+      const allTemas = draftBuffetData.Temas.map(d => d.Tema);
+      draftParticipants.forEach((p, i) => {
+        draftParticipantTemas[p] = [allTemas[i % allTemas.length]];
+      });
+    }
+    render();
+
+  } else if (action === 'buffet-clear') {
+    syncDraftName();
+    draftBuffetData = null;
+    draftParticipantTemas = {};
+    buffetAssigningParticipant = null;
+    draftRoundTemas = {};
+    sharedTemasAssigningRound = null;
+    render();
+
+  } else if (action === 'add-participants-open') {
+    addNames = []; addNameInputMode = 'manual';
+    addParticipantTemas = {}; addBuffetAssigning = null;
+    addParticipantContent = {}; addEditingParticipant = null;
+    view = 'add-participants'; render();
+
+  } else if (action === 'addp-cancel') {
+    addNames = []; addParticipantTemas = {}; addParticipantContent = {};
+    view = 'detail'; render();
+
+  } else if (action === 'addp-mode') {
+    addNameInputMode = el.dataset.mode; render();
+
+  } else if (action === 'addp-add-name') {
+    const t = getTournament(activeTid);
+    const inp = document.getElementById('addParticipantInput');
+    const val = inp?.value.trim();
+    if (val && t && !t.participants.includes(val) && !addNames.includes(val)) addNames.push(val);
+    if (inp) inp.value = '';
+    render(); document.getElementById('addParticipantInput')?.focus();
+
+  } else if (action === 'addp-rm-name') {
+    const removed = addNames[+el.dataset.index];
+    addNames.splice(+el.dataset.index, 1);
+    if (removed) { delete addParticipantTemas[removed]; delete addParticipantContent[removed]; }
+    if (addBuffetAssigning === removed) addBuffetAssigning = null;
+    if (addEditingParticipant === removed) addEditingParticipant = addNames[0] || null;
+    render();
+
+  } else if (action === 'addp-import-names') {
+    const t = getTournament(activeTid);
+    const raw = document.getElementById('addParticipantBulk')?.value.trim() || '';
+    const fb = document.getElementById('addpFeedback');
+    let names;
+    try { const parsed = JSON.parse(raw); names = Array.isArray(parsed) ? parsed.map(String) : null; }
+    catch { names = raw.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean); }
+    if (!names || !names.length) { fb.textContent='No se encontraron nombres.'; fb.className='import-feedback err'; return; }
+    let added = 0;
+    names.forEach(n => { if (n && t && !t.participants.includes(n) && !addNames.includes(n)) { addNames.push(n); added++; } });
+    fb.textContent = `${added} importado${added===1?'':'s'}.`; fb.className = 'import-feedback ok';
+    render();
+
+  } else if (action === 'addp-buffet-assign') {
+    addBuffetAssigning = el.dataset.name; render();
+
+  } else if (action === 'addp-toggle-tema') {
+    const t = getTournament(activeTid);
+    const name = el.dataset.name;
+    const rawTema = el.dataset.tema;
+    const match = (t?.buffetData?.Temas || []).find(d => String(d.Tema) === String(rawTema));
+    const Tema = match ? match.Tema : rawTema;
+    if (!addParticipantTemas[name]) addParticipantTemas[name] = [];
+    const idx = addParticipantTemas[name].findIndex(x => String(x) === String(Tema));
+    if (idx >= 0) addParticipantTemas[name].splice(idx, 1);
+    else addParticipantTemas[name].push(Tema);
+    render();
+
+  } else if (action === 'addp-buffet-auto-all') {
+    const t = getTournament(activeTid);
+    const allTemas = (t?.buffetData?.Temas || []).map(d => d.Tema);
+    if (allTemas.length) addNames.forEach((p, i) => { addParticipantTemas[p] = [allTemas[i % allTemas.length]]; });
+    render();
+
+  } else if (action === 'addp-edit-content') {
+    addEditingParticipant = el.dataset.name;
+    render();
+    document.getElementById('addpContentInput')?.focus();
+
+  } else if (action === 'addp-add-content') {
+    const name = el.dataset.name;
+    const inp = document.getElementById('addpContentInput');
+    const val = inp?.value.trim();
+    if (val) {
+      if (!addParticipantContent[name]) addParticipantContent[name] = [];
+      addParticipantContent[name].push({ text: val });
+    }
+    if (inp) inp.value = '';
+    render(); document.getElementById('addpContentInput')?.focus();
+
+  } else if (action === 'addp-rm-content') {
+    const name = el.dataset.name;
+    (addParticipantContent[name] || []).splice(+el.dataset.index, 1);
+    render();
+
+  } else if (action === 'addp-confirm') {
+    const t = getTournament(activeTid);
+    if (!t || !addNames.length) return;
+    if (t.contentType === 'buffet' && !addNames.every(p => (addParticipantTemas[p]||[]).length >= 1)) return;
+    if (t.contentType === 'individual' && !addNames.every(p => (addParticipantContent[p]||[]).length >= 1)) return;
+
+    addParticipants(t, addNames);
+    // Pisar los valores por defecto con lo que el usuario eligió a mano en este formulario.
+    addNames.forEach(p => {
+      if (t.contentType === 'buffet' && addParticipantTemas[p]) t.participantTemas[p] = [...addParticipantTemas[p]];
+      if (t.contentType === 'individual' && addParticipantContent[p]) t.participantContent[p] = [...addParticipantContent[p]];
+    });
+    saveTournament(t);
+
+    addNames = []; addParticipantTemas = {}; addParticipantContent = {}; addBuffetAssigning = null; addEditingParticipant = null;
+    view = 'detail'; render();
+
+  } else if (action === 'toggle-hide-results-draft') {
+    syncDraftName();
+    draftHideResults = !draftHideResults;
+    render();
+
+  } else if (action === 'create') {
+    syncDraftName();
+    const nameEl = document.getElementById('tournamentNameInput');
+    const name = nameEl?.value.trim() || draftName;
+    if (!name || draftParticipants.length < 2) return;
+    const rounds = generateRounds(draftParticipants);
+    const sharedTemasMode = contentType === 'shared' && sharedContentMode === 'temas';
+    if (contentType === 'shared' && !sharedTemasMode && !rounds.every((_, i) => (draftQuestionsByRound[i+1]||[]).length >= 1)) return;
+    if (sharedTemasMode && (!draftBuffetData || !rounds.every((_, i) => (draftRoundTemas[i+1]||[]).length >= 1))) return;
+    if (contentType === 'buffet' && (!draftBuffetData || !draftParticipants.every(p => (draftParticipantTemas[p]||[]).length >= 1))) return;
+    const tournament = {
+      id: 'trn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      name,
+      participants: [...draftParticipants],
+      contentType,
+      questions: [],
+      questionsByRound: (contentType === 'shared' && !sharedTemasMode)
+        ? rounds.map((_, i) => ({ round: i+1, questions: [...(draftQuestionsByRound[i+1]||[])] }))
+        : [],
+      participantContent: {},
+      buffetData: (contentType === 'buffet' || sharedTemasMode) ? draftBuffetData : null,
+      roundTemas: sharedTemasMode
+        ? Object.fromEntries(rounds.map((_, i) => [i+1, [...(draftRoundTemas[i+1]||[])]]))
+        : null,
+      participantTemas: contentType === 'buffet'
+        ? Object.fromEntries(draftParticipants.map(p => [p, [...(draftParticipantTemas[p]||[])]]))
+        : {},
+      questionsPerTema: contentType === 'buffet' ? draftQuestionsPerTema : 3,
+      rounds,
+      hideResults: draftHideResults,
+      createdAt: Date.now()
+    };
+    const all = loadAll(); all.push(tournament); saveAll(all);
+    activeTid = tournament.id; view = 'detail'; render();
+
+  } else if (action === 'toggle-hide-results') {
+    const t = getTournament(activeTid);
+    if (!t) return;
+    t.hideResults = !t.hideResults;
+    saveTournament(t);
+    if (!t.hideResults) standingsRevealed = false;
+    render();
+
+  } else if (action === 'set-tournament-questions-per-tema') {
+    const t = getTournament(activeTid);
+    if (!t) return;
+    t.questionsPerTema = +el.dataset.n;
+    saveTournament(t);
+    render();
+
+  } else if (action === 'toggle-standings-reveal') {
+    standingsRevealed = !standingsRevealed;
+    render();
+
+  } else if (action === 'sort-by') {
+    sortBy = el.dataset.key; render();
+
+  } else if (action === 'team-sort') {
+    teamSortBy = el.dataset.key === 'avg' ? 'avg' : 'total'; render();
+
+  } else if (action === 'open-bonus') {
+    const t = getTournament(activeTid);
+    if (!t) return;
+    // pre-cargar puntos bonus ya guardados
+    bonusScores = Object.fromEntries(t.participants.map(p => [p, t.bonusPoints?.[p] ?? 0]));
+    bonusIdx = 0;
+    view = 'bonus'; render();
+
+  } else if (action === 'bonus-cancel') {
+    view = 'detail'; render();
+
+  } else if (action === 'bonus-go') {
+    bonusIdx = +el.dataset.idx; render();
+
+  } else if (action === 'bonus-prev') {
+    if (bonusIdx > 0) { bonusIdx--; render(); }
+
+  } else if (action === 'bonus-next') {
+    const t = getTournament(activeTid);
+    if (t && bonusIdx < t.participants.length - 1) { bonusIdx++; render(); }
+
+  } else if (action === 'bonus-delta') {
+    const t = getTournament(activeTid);
+    if (!t) return;
+    const name = t.participants[bonusIdx];
+    bonusScores[name] = Math.max(0, (bonusScores[name] ?? 0) + +el.dataset.delta);
+    const el2 = document.getElementById('bonusScore');
+    if (el2) {
+      el2.textContent = bonusScores[name];
+      el2.classList.remove('bump'); void el2.offsetWidth; el2.classList.add('bump');
+      setTimeout(() => el2.classList.remove('bump'), 300);
+    }
+
+  } else if (action === 'bonus-set') {
+    const t = getTournament(activeTid);
+    if (!t) return;
+    const name = t.participants[bonusIdx];
+    const inp = document.getElementById('bonusCustom');
+    const val = parseInt(inp?.value ?? '', 10);
+    if (!isNaN(val) && val >= 0) {
+      bonusScores[name] = val;
+      if (inp) inp.value = '';
+      const el2 = document.getElementById('bonusScore');
+      if (el2) el2.textContent = val;
+    }
+
+  } else if (action === 'bonus-save') {
+    const t = getTournament(activeTid);
+    if (!t) return;
+    t.bonusPoints = { ...bonusScores };
+    saveTournament(t);
+    view = 'detail'; render();
+
+  } else if (action === 'open-round') {
+    const round = +el.dataset.round;
+    window.location.href = `Jornada.html?tid=${encodeURIComponent(activeTid)}&round=${round}`;
+
+  } else if (action === 'buffet-edit-open') {
+    const t = getTournament(activeTid);
+    if (!t) return;
+    editBuffetData = JSON.parse(JSON.stringify(t.buffetData || { Temas: [] }));
+    editBuffetTema = editBuffetData.Temas[0]?.Tema ?? null;
+    view = 'buffet-edit'; render();
+
+  } else if (action === 'buffet-edit-Tema') {
+    editBuffetTema = el.dataset.tema; render();
+
+  } else if (action === 'buffet-edit-rm-q') {
+    const Tema = el.dataset.tema;
+    const qi = +el.dataset.qi;
+    if (!confirm('¿Eliminar esta pregunta del tema ' + Tema + '?')) return;
+    const TemaObj = editBuffetData?.Temas.find(d => String(d.Tema) === String(Tema));
+    if (TemaObj) { TemaObj.preguntas.splice(qi, 1); render(); }
+
+  } else if (action === 'buffet-edit-add-q') {
+    const pregunta = document.getElementById('buffetNewPregunta')?.value.trim();
+    const respuesta = document.getElementById('buffetNewRespuesta')?.value.trim();
+    const justificacion = document.getElementById('buffetNewJustificacion')?.value.trim() || '';
+    if (!pregunta || !respuesta) { alert('Completá al menos la pregunta y la respuesta.'); return; }
+    const TemaObj = editBuffetData?.Temas.find(d => String(d.Tema) === String(editBuffetTema));
+    if (TemaObj) {
+      if (!TemaObj.preguntas) TemaObj.preguntas = [];
+      TemaObj.preguntas.push({ pregunta, respuesta, justificacion });
+      render();
+    }
+
+  } else if (action === 'buffet-edit-clear-q') {
+    const TemaObj = editBuffetData?.Temas.find(d => String(d.Tema) === String(editBuffetTema));
+    if (!TemaObj) return;
+    const cant = (TemaObj.preguntas || []).length;
+    if (!confirm(`¿Eliminar las ${cant} preguntas del tema ${editBuffetTema}? Esta acción no se puede deshacer.`)) return;
+    TemaObj.preguntas = [];
+    render();
+
+  } else if (action === 'buffet-copy-format') {
+    const sample = '{\n  "pregunta": "",\n  "respuesta": "",\n  "justificacion": ""\n}';
+    copyToClipboard(sample);
+
+  } else if (action === 'buffet-edit-paste-q') {
+    const textarea = document.getElementById('buffetPasteArea');
+    const raw = textarea?.value.trim();
+    if (!raw) { alert('Pegá primero el texto con las preguntas.'); return; }
+    const parsed = parseQuestionsPaste(raw);
+    if (!parsed || parsed.length === 0) {
+      alert('No pude leer ese texto. Revisá que tenga el formato { "pregunta": ..., "respuesta": ..., "justificacion": ... }.');
+      return;
+    }
+    const TemaObj = editBuffetData?.Temas.find(d => String(d.Tema) === String(editBuffetTema));
+    if (TemaObj) {
+      if (!TemaObj.preguntas) TemaObj.preguntas = [];
+      TemaObj.preguntas.push(...parsed);
+      if (textarea) textarea.value = '';
+      render();
+    }
+
+  } else if (action === 'buffet-edit-download') {
+    const t = getTournament(activeTid);
+    if (!editBuffetData || !t) return;
+    downloadJSON(editBuffetData, `${slugify(t.name)}-preguntas-por-tema.json`);
+
+  } else if (action === 'buffet-edit-save') {
+    const t = getTournament(activeTid);
+    if (!t || !editBuffetData) return;
+    t.buffetData = editBuffetData;
+    saveTournament(t);
+    editBuffetData = null; editBuffetTema = null;
+    view = 'detail'; render();
+
+  } else if (action === 'buffet-edit-cancel') {
+    editBuffetData = null; editBuffetTema = null;
+    view = 'detail'; render();
+
+  } else if (action === 'shared-edit-open') {
+    const t = getTournament(activeTid);
+    if (!t) return;
+    editSharedData = ensureQuestionsByRound(t);
+    editSharedRound = editSharedData[0]?.round ?? null;
+    view = 'shared-edit'; render();
+
+  } else if (action === 'shared-edit-round') {
+    editSharedRound = +el.dataset.round; render();
+
+  } else if (action === 'shared-edit-rm-q') {
+    const round = +el.dataset.round;
+    const qi = +el.dataset.qi;
+    if (!confirm('¿Eliminar esta pregunta de la Jornada ' + round + '?')) return;
+    const roundObj = editSharedData?.find(r => r.round === round);
+    if (roundObj) { roundObj.questions.splice(qi, 1); render(); }
+
+  } else if (action === 'shared-edit-add-q') {
+    const inp = document.getElementById('sharedNewQuestion');
+    const text = inp?.value.trim();
+    if (!text) { alert('Escribí la pregunta.'); return; }
+    const roundObj = editSharedData?.find(r => r.round === editSharedRound);
+    if (roundObj) {
+      if (!roundObj.questions) roundObj.questions = [];
+      roundObj.questions.push({ text });
+      render();
+    }
+
+  } else if (action === 'shared-edit-save') {
+    const t = getTournament(activeTid);
+    if (!t || !editSharedData) return;
+    if (editSharedData.some(r => (r.questions||[]).length < 1)) {
+      alert('Cada jornada necesita al menos 1 pregunta.');
+      return;
+    }
+    t.questionsByRound = editSharedData;
+    t.questions = [];
+    saveTournament(t);
+    editSharedData = null; editSharedRound = null;
+    view = 'detail'; render();
+
+  } else if (action === 'shared-edit-cancel') {
+    editSharedData = null; editSharedRound = null;
+    view = 'detail'; render();
+
+  } else if (action === 'round-temas-edit-open') {
+    const t = getTournament(activeTid);
+    if (!t) return;
+    editRoundTemas = ensureRoundTemas(t);
+    editRoundQuestionsPerTema = ensureRoundQuestionsPerTema(t);
+    editRoundTemasRound = t.rounds.length ? 1 : null;
+    view = 'round-temas-edit'; render();
+
+  } else if (action === 'round-temas-edit-round') {
+    editRoundTemasRound = +el.dataset.round; render();
+
+  } else if (action === 'round-temas-edit-toggle') {
+    const round = +el.dataset.round;
+    const t = getTournament(activeTid);
+    const rawTema = el.dataset.tema;
+    const match = (t?.buffetData?.Temas || []).find(d => String(d.Tema) === String(rawTema));
+    const Tema = match ? match.Tema : rawTema;
+    if (!editRoundTemas[round]) editRoundTemas[round] = [];
+    const idx = editRoundTemas[round].findIndex(x => String(x) === String(Tema));
+    if (idx >= 0) editRoundTemas[round].splice(idx, 1);
+    else editRoundTemas[round].push(Tema);
+    editRoundTemas[round].sort((a, b) =>
+      String(a).localeCompare(String(b), 'es', { numeric: true, sensitivity: 'base' })
+    );
+    render();
+
+  } else if (action === 'round-temas-edit-qpt') {
+    const round = +el.dataset.round;
+    const n = el.dataset.n === 'all' ? null : +el.dataset.n;
+    if (!editRoundQuestionsPerTema) editRoundQuestionsPerTema = {};
+    editRoundQuestionsPerTema[round] = n;
+    render();
+
+  } else if (action === 'round-temas-edit-auto') {
+    const round = +el.dataset.round;
+    const t = getTournament(activeTid);
+    if (t?.buffetData) {
+      const allTemas = t.buffetData.Temas.map(d => d.Tema);
+      editRoundTemas[round] = [allTemas[Math.floor(Math.random() * allTemas.length)]];
+    }
+    render();
+
+  } else if (action === 'round-temas-edit-save') {
+    const t = getTournament(activeTid);
+    if (!t || !editRoundTemas) return;
+    t.roundTemas = editRoundTemas;
+    t.roundQuestionsPerTema = editRoundQuestionsPerTema;
+    saveTournament(t);
+    editRoundTemas = null; editRoundTemasRound = null; editRoundQuestionsPerTema = null;
+    view = 'detail'; render();
+
+  } else if (action === 'round-temas-edit-cancel') {
+    editRoundTemas = null; editRoundTemasRound = null; editRoundQuestionsPerTema = null;
+    view = 'detail'; render();
+  }
+});
+
+// ── edición de campos de texto del buffet (sin re-render, para no perder el foco) ──
+document.getElementById('app').addEventListener('input', e => {
+  if (e.target?.dataset?.action === 'edit-field') {
+    const Tema = e.target.dataset.tema;
+    const qi = +e.target.dataset.qi;
+    const field = e.target.dataset.field;
+    const TemaObj = editBuffetData?.Temas.find(d => String(d.Tema) === String(Tema));
+    if (TemaObj && TemaObj.preguntas[qi]) {
+      TemaObj.preguntas[qi][field] = e.target.value;
+    }
+  }
+  if (e.target?.dataset?.action === 'shared-edit-field') {
+    const round = +e.target.dataset.round;
+    const qi = +e.target.dataset.qi;
+    const roundObj = editSharedData?.find(r => r.round === round);
+    if (roundObj && roundObj.questions[qi]) {
+      roundObj.questions[qi].text = e.target.value;
+    }
+  }
+  if (e.target?.dataset?.action === 'real-name-field') {
+    const pseudo = e.target.dataset.pseudo;
+    if (editRealNames && pseudo != null) {
+      editRealNames[pseudo] = e.target.value;
+    }
+  }
+});
+
+// ── importar torneo completo desde JSON (lista de torneos) ──
+document.getElementById('app').addEventListener('change', e => {
+  if (e.target?.id === 'importTournamentInput') {
+    const file = e.target.files[0];
+    e.target.value = ''; // permite volver a elegir el mismo archivo más tarde
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data;
+      try {
+        data = JSON.parse(reader.result);
+      } catch (err) {
+        alert('Error al parsear el JSON: ' + err.message);
+        return;
+      }
+      if (!data || typeof data !== 'object' || !data.name || !Array.isArray(data.participants) || !Array.isArray(data.rounds)) {
+        alert('El archivo no tiene el formato esperado de un torneo (faltan "name", "participants" o "rounds").');
+        return;
+      }
+      const all = loadAll();
+      // evitar pisar un torneo existente: si el id ya existe (o no tiene), le asignamos uno nuevo
+      if (!data.id || all.some(t => t.id === data.id)) {
+        data.id = 'tid_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      }
+      saveTournament(data);
+      render();
+      alert(`Torneo "${data.name}" importado correctamente.`);
+    };
+    reader.readAsText(file);
+  }
+  if (e.target?.id === 'buffetFileInput') {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data.Temas || !Array.isArray(data.Temas) || data.Temas.length === 0) {
+          alert('El JSON debe tener una propiedad "Temas" con al menos un tema.');
+          return;
+        }
+        draftBuffetData = data;
+        if (contentType === 'shared') {
+          // auto-asignar el primer tema a cada jornada si no tiene ninguno
+          const previewRounds = draftParticipants.length >= 2 ? generateRounds(draftParticipants) : [];
+          previewRounds.forEach((_, i) => {
+            const r = i + 1;
+            if (!draftRoundTemas[r] || draftRoundTemas[r].length === 0) {
+              draftRoundTemas[r] = [data.Temas[0].Tema];
+            }
+          });
+        } else {
+          // auto-asignar el primer tema a cada participante si no tiene ninguno
+          draftParticipants.forEach(p => {
+            if (!draftParticipantTemas[p] || draftParticipantTemas[p].length === 0) {
+              draftParticipantTemas[p] = [data.Temas[0].Tema];
+            }
+          });
+        }
+        render();
+      } catch (err) {
+        alert('Error al parsear el JSON: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+});
+
+document.getElementById('app').addEventListener('keydown', e => {
+  if (e.target?.id === 'participantInput' && e.key === 'Enter') {
+    e.preventDefault();
+    document.querySelector('[data-action="add-participant"]')?.click();
+  }
+  if (e.target?.id === 'questionInput' && e.key === 'Enter') {
+    e.preventDefault();
+    document.querySelector('[data-action="add-question"]')?.click();
+  }
+  if (e.target?.id === 'pcInput' && e.key === 'Enter') {
+    e.preventDefault();
+    document.querySelector('[data-action="add-pcontent"]')?.click();
+  }
+  if (e.target?.id === 'bonusCustom' && e.key === 'Enter') {
+    e.preventDefault();
+    document.querySelector('[data-action="bonus-set"]')?.click();
+  }
+  if (e.target?.id === 'sharedNewQuestion' && e.key === 'Enter') {
+    e.preventDefault();
+    document.querySelector('[data-action="shared-edit-add-q"]')?.click();
+  }
+});
+
+// hover sobre la gráfica de progreso: resalta la jornada bajo el cursor
+document.getElementById('app').addEventListener('mouseover', e => {
+  const c = e.target.closest ? e.target.closest('.pg-col') : null;
+  if (!c) return;
+  const r = parseInt(c.dataset.round, 10);
+  if (r !== progressFocus) { progressFocus = r; updateProgressFocus(); }
+});
+
+render();
+// al abrir la pantalla principal, trae los torneos del worker
+if (view === 'home') runSync();
+</script>
+</body>
+</html>
